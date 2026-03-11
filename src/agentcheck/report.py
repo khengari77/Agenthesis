@@ -12,7 +12,7 @@ from rich.text import Text
 if TYPE_CHECKING:
     from agentcheck.types import InvariantViolation
 
-console = Console()
+console = Console(stderr=True)
 
 
 def report_failure(

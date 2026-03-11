@@ -39,6 +39,25 @@ class TestMaxSteps:
             run_test()
 
 
+    def test_runtime_abort_via_decorator(self, agent: DummyAgent) -> None:
+        """Verify that @max_steps aborts during execution via pending limits."""
+        call_count = 0
+
+        @max_steps(1)
+        def run_test():
+            nonlocal call_count
+            with Intercept(agent):
+                agent.run("search one")
+                call_count += 1
+                agent.run("search two")  # 2nd call should trigger abort
+                call_count += 1  # Should not reach here
+
+        with pytest.raises(InvariantViolation, match="max_steps"):
+            run_test()
+
+        assert call_count == 1
+
+
 class TestNeverCalls:
     def test_passes_when_tool_not_called(self, agent: DummyAgent) -> None:
         @never_calls("execute_refund")

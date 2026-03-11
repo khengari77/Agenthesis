@@ -11,6 +11,25 @@ if TYPE_CHECKING:
     import pytest
 
 
+def _find_invariant_violation(excinfo: pytest.ExceptionInfo[Any]) -> InvariantViolation | None:
+    """Walk the exception chain to find an InvariantViolation.
+
+    Hypothesis may wrap the original error in its own exception types
+    (e.g., Flaky, FalsifyingExample), so we traverse __cause__ and __context__.
+    """
+    if excinfo.errisinstance(InvariantViolation):
+        return excinfo.value
+
+    exc: BaseException | None = excinfo.value
+    seen: set[int] = set()
+    while exc is not None and id(exc) not in seen:
+        seen.add(id(exc))
+        if isinstance(exc, InvariantViolation):
+            return exc
+        exc = exc.__cause__ or exc.__context__
+    return None
+
+
 def pytest_exception_interact(
     node: pytest.Item,
     call: pytest.CallInfo[Any],
@@ -19,12 +38,12 @@ def pytest_exception_interact(
     """Display a Rich failure report when an InvariantViolation is raised."""
     if call.excinfo is None:
         return
-    if not call.excinfo.errisinstance(InvariantViolation):
+
+    violation = _find_invariant_violation(call.excinfo)
+    if violation is None:
         return
 
-    violation: InvariantViolation = call.excinfo.value
-    test_name = node.name
-    report_failure(test_name, violation)
+    report_failure(node.name, violation)
 
 
 def pytest_runtest_logreport(report: pytest.TestReport) -> None:

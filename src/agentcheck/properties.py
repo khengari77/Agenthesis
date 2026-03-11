@@ -5,7 +5,7 @@ from __future__ import annotations
 import functools
 from typing import TYPE_CHECKING, Any
 
-from agentcheck._context import get_current_intercept
+from agentcheck._context import get_current_intercept, set_pending_limits
 from agentcheck.types import InvariantViolation
 
 if TYPE_CHECKING:
@@ -22,15 +22,10 @@ def max_steps(n: int) -> Callable[..., Any]:
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            # Set runtime limit before execution
-            try:
-                ctx = get_current_intercept()
-                ctx.set_step_limit(n)
-            except Exception:  # noqa: BLE001
-                pass  # No active context yet; post-mortem check will catch it
-
+            set_pending_limits(max_steps=n)
             result = fn(*args, **kwargs)
 
+            # Post-mortem safety net
             ctx = get_current_intercept()
             trace = ctx.trace
             if trace.steps > n:
@@ -110,14 +105,10 @@ def max_llm_calls(n: int) -> Callable[..., Any]:
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            try:
-                ctx = get_current_intercept()
-                ctx.set_llm_call_limit(n)
-            except Exception:  # noqa: BLE001
-                pass
-
+            set_pending_limits(max_llm_calls=n)
             result = fn(*args, **kwargs)
 
+            # Post-mortem safety net
             ctx = get_current_intercept()
             trace = ctx.trace
             if trace.llm_calls > n:
@@ -142,14 +133,10 @@ def max_token_cost(max_tokens: int) -> Callable[..., Any]:
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            try:
-                ctx = get_current_intercept()
-                ctx.set_token_limit(max_tokens)
-            except Exception:  # noqa: BLE001
-                pass
-
+            set_pending_limits(max_tokens=max_tokens)
             result = fn(*args, **kwargs)
 
+            # Post-mortem safety net
             ctx = get_current_intercept()
             trace = ctx.trace
             if trace.total_tokens > max_tokens:

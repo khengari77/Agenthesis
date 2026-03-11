@@ -19,6 +19,9 @@ _context_stack: contextvars.ContextVar[list[Intercept] | None] = contextvars.Con
 _context_last: contextvars.ContextVar[Intercept | None] = contextvars.ContextVar(
     "_context_last", default=None
 )
+_pending_limits: contextvars.ContextVar[dict[str, int] | None] = contextvars.ContextVar(
+    "_pending_limits", default=None
+)
 
 
 def push_context(ctx: Intercept) -> None:
@@ -61,3 +64,19 @@ def get_current_intercept() -> Intercept:
 
     msg = "No active Intercept context. Use 'with Intercept(agent) as ctx:' first."
     raise AgentCheckError(msg)
+
+
+def set_pending_limits(**limits: int) -> None:
+    """Store limits to be ingested by the next Intercept.__enter__."""
+    current = _pending_limits.get()
+    if current is None:
+        _pending_limits.set(dict(limits))
+    else:
+        current.update(limits)
+
+
+def consume_pending_limits() -> dict[str, int] | None:
+    """Pop and return pending limits (called by Intercept.__enter__)."""
+    limits = _pending_limits.get()
+    _pending_limits.set(None)
+    return limits

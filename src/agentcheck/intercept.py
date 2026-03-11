@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import contextlib
+import inspect
 import time
 from typing import TYPE_CHECKING, Any
 
-from agentcheck._context import pop_context, push_context
+from agentcheck._context import consume_pending_limits, pop_context, push_context
 from agentcheck.types import AgentTrace, InterceptError, InvariantViolation, ToolCall, ToolKit
 
 if TYPE_CHECKING:
@@ -184,18 +185,16 @@ class Intercept:
         )
 
     def _make_wrapper(self, name: str, original: Callable[..., Any]) -> Callable[..., Any]:
-        """Create a recording wrapper for a tool."""
+        """Create a recording wrapper for a tool (sync or async)."""
         intercept = self
 
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            stub = intercept._stubs.get(name)
-            was_intercepted = stub is not None and stub._mode != "passthrough"
-
-            if stub is not None:
-                result = stub._execute(*args, **kwargs)
-            else:
-                result = original(*args, **kwargs)
-
+        def _record_call(
+            args: tuple[Any, ...],
+            kwargs: dict[str, Any],
+            result: Any,
+            was_intercepted: bool,
+        ) -> Any:
+            """Shared recording and limit-checking logic."""
             call = ToolCall(
                 name=name,
                 arguments={"args": args, "kwargs": kwargs},
@@ -221,6 +220,36 @@ class Intercept:
                     trace=intercept._build_trace(),
                 )
 
+            return result
+
+        if inspect.iscoroutinefunction(original):
+
+            async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+                stub = intercept._stubs.get(name)
+                was_intercepted = stub is not None and stub._mode != "passthrough"
+
+                if stub is not None:
+                    result = stub._execute(*args, **kwargs)
+                    if inspect.isawaitable(result):
+                        result = await result
+                else:
+                    result = await original(*args, **kwargs)
+
+                _record_call(args, kwargs, result, was_intercepted)
+                return result
+
+            return async_wrapper
+
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            stub = intercept._stubs.get(name)
+            was_intercepted = stub is not None and stub._mode != "passthrough"
+
+            if stub is not None:
+                result = stub._execute(*args, **kwargs)
+            else:
+                result = original(*args, **kwargs)
+
+            _record_call(args, kwargs, result, was_intercepted)
             return result
 
         return wrapper
@@ -270,6 +299,17 @@ class Intercept:
                 setattr(self._agent, f"tool_{name}", wrapped)
 
         push_context(self)
+
+        # Ingest any limits set by invariant decorators before this context opened
+        limits = consume_pending_limits()
+        if limits:
+            if "max_steps" in limits:
+                self._max_steps = limits["max_steps"]
+            if "max_tokens" in limits:
+                self._max_tokens = limits["max_tokens"]
+            if "max_llm_calls" in limits:
+                self._max_llm_calls = limits["max_llm_calls"]
+
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:

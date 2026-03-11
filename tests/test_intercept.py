@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from agentcheck.intercept import Intercept
-from agentcheck.types import InterceptError
+from agentcheck.types import InterceptError, InvariantViolation
 
 if TYPE_CHECKING:
     from agentcheck._testing import DummyAgent
@@ -119,6 +119,62 @@ class TestIntercept:
 
         assert ctx.trace.llm_calls == 2
         assert ctx.trace.total_tokens == 300
+
+
+    def test_runtime_step_limit_aborts_immediately(self, agent: DummyAgent) -> None:
+        """Verify that set_step_limit raises during execution, not post-mortem."""
+        call_count = 0
+
+        with pytest.raises(InvariantViolation, match="max_steps"), Intercept(agent) as ctx:
+            ctx.set_step_limit(1)
+            agent.run("search one")  # 1 tool call → ok
+            call_count += 1
+            agent.run("search two")  # 2nd tool call → should abort here
+            call_count += 1  # Should never reach this
+
+        assert call_count == 1
+
+    def test_runtime_token_limit_aborts_immediately(self, agent: DummyAgent) -> None:
+        with pytest.raises(InvariantViolation, match="max_token_cost"), Intercept(agent) as ctx:
+            ctx.set_token_limit(50)
+            ctx.record_llm_call(tokens=100)  # Exceeds 50 → abort
+
+    def test_pending_limits_ingested_on_enter(self, agent: DummyAgent) -> None:
+        """Verify that pending limits from decorators are ingested by __enter__."""
+        from agentcheck._context import set_pending_limits
+
+        set_pending_limits(max_steps=2)
+        with Intercept(agent) as ctx:
+            assert ctx._max_steps == 2
+
+    def test_async_wrapper_with_stub(self) -> None:
+        """Verify that async tools get async wrappers and stubs work."""
+        import asyncio
+
+        async def async_search(query: str) -> dict:
+            return {"results": [query]}
+
+        tools = {"search": async_search}
+        with Intercept(tools=tools) as ctx:
+            ctx.on("search").respond({"results": ["mocked"]})
+            result = asyncio.run(tools["search"]("test"))
+
+        assert result == {"results": ["mocked"]}
+        assert ctx.trace.tool_calls[0].was_intercepted is True
+
+    def test_async_wrapper_passthrough(self) -> None:
+        """Verify that async passthrough properly awaits the original."""
+        import asyncio
+
+        async def async_fetch(url: str) -> dict:
+            return {"status": 200, "url": url}
+
+        tools = {"fetch": async_fetch}
+        with Intercept(tools=tools) as ctx:
+            result = asyncio.run(tools["fetch"]("https://example.com"))
+
+        assert result == {"status": 200, "url": "https://example.com"}
+        assert ctx.trace.tool_calls[0].was_intercepted is False
 
 
 class TestToolStub:

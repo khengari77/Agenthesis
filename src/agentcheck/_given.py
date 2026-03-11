@@ -10,16 +10,12 @@ from hypothesis import given as _hypothesis_given
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-_AGENT_SETTINGS = settings(
-    max_examples=10,
-    deadline=None,
-    suppress_health_check=[HealthCheck.too_slow],
-)
-
 
 def given(
     *args: Any,
     max_examples: int = 10,
+    deadline: int | None = None,
+    suppress_health_check: list[HealthCheck] | None = None,
     **kwargs: Any,
 ) -> Callable[..., Any]:
     """AgentCheck's @given decorator.
@@ -28,13 +24,20 @@ def given(
     - max_examples=10 (agent calls are expensive)
     - deadline=None (agent calls are slow)
     - suppress too_slow health check
+
+    Users can override any setting, or apply their own @settings decorator
+    below @ac.given (inner @settings takes precedence in Hypothesis).
     """
+    if suppress_health_check is not None:
+        health_checks = suppress_health_check
+    else:
+        health_checks = [HealthCheck.too_slow]
 
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         configured = settings(
             max_examples=max_examples,
-            deadline=None,
-            suppress_health_check=[HealthCheck.too_slow],
+            deadline=deadline,
+            suppress_health_check=health_checks,
         )(fn)
         return _hypothesis_given(*args, **kwargs)(configured)
 
