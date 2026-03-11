@@ -162,6 +162,26 @@ class TestIntercept:
         assert result == {"results": ["mocked"]}
         assert ctx.trace.tool_calls[0].was_intercepted is True
 
+    def test_no_dict_pollution_after_exit(self) -> None:
+        """Verify that tool_* attribute interception doesn't pollute instance __dict__."""
+
+        class AttrAgent:
+            def tool_greet(self, name: str = "world") -> str:
+                return f"hello {name}"
+
+        agent = AttrAgent()
+        assert "tool_greet" not in agent.__dict__
+
+        with Intercept(agent) as ctx:
+            ctx.on("greet").respond("mocked")
+            # During interception, wrapper is in __dict__
+            assert "tool_greet" in agent.__dict__
+
+        # After exit, __dict__ should be clean
+        assert "tool_greet" not in agent.__dict__
+        # Class-level method should still work
+        assert agent.tool_greet() == "hello world"
+
     def test_async_wrapper_passthrough(self) -> None:
         """Verify that async passthrough properly awaits the original."""
         import asyncio

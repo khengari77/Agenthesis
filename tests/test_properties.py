@@ -58,6 +58,24 @@ class TestMaxSteps:
         assert call_count == 1
 
 
+    def test_multi_agent_limits_apply_to_all(self, agent: DummyAgent) -> None:
+        """Verify that pending limits apply to all Intercept contexts in the same test."""
+        from agentcheck._testing import DummyAgent
+
+        agent_b = DummyAgent()
+
+        @max_steps(1)
+        def run_test():
+            # First agent — should have max_steps=1
+            with Intercept(agent) as ctx_a:
+                assert ctx_a._max_steps == 1
+            # Second agent — should also have max_steps=1
+            with Intercept(agent_b) as ctx_b:
+                assert ctx_b._max_steps == 1
+
+        run_test()
+
+
 class TestNeverCalls:
     def test_passes_when_tool_not_called(self, agent: DummyAgent) -> None:
         @never_calls("execute_refund")
@@ -149,4 +167,40 @@ class TestMaxTokenCost:
                 ctx.record_llm_call(tokens=500)
 
         with pytest.raises(InvariantViolation, match="max_token_cost"):
+            run_test()
+
+
+class TestMultiAgentNeverCalls:
+    def test_catches_violation_in_first_agent(self, agent: DummyAgent) -> None:
+        """Violation in first agent caught even when second agent is clean."""
+        from agentcheck._testing import DummyAgent as DummyAgentFactory
+
+        agent_b = DummyAgentFactory()
+
+        @never_calls("search")
+        def run_test():
+            with Intercept(agent):
+                agent.run("search for something")  # Violates!
+            with Intercept(agent_b):
+                agent_b.run("hello")  # Clean
+
+        with pytest.raises(InvariantViolation, match="never_calls"):
+            run_test()
+
+
+class TestMultiAgentRequiresBefore:
+    def test_catches_order_violation_in_earlier_agent(self, agent: DummyAgent) -> None:
+        """Ordering violation in first agent caught even when second is clean."""
+        from agentcheck._testing import DummyAgent as DummyAgentFactory
+
+        agent_b = DummyAgentFactory()
+
+        @requires_before("calculator", "search")
+        def run_test():
+            with Intercept(agent):
+                agent.run("search for info")  # search without calculator first → violation
+            with Intercept(agent_b):
+                agent_b.run("hello")
+
+        with pytest.raises(InvariantViolation, match="requires_before"):
             run_test()

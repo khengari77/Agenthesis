@@ -116,6 +116,7 @@ class TestAgentCheckGiven:
     def test_given_with_defaults(self, prompt: str) -> None:
         assert isinstance(prompt, str)
 
-    @ac.given(prompt=st.text(max_size=20), max_examples=3)
+    @ac.given(prompt=st.text(max_size=20))
+    @settings(max_examples=3)
     def test_given_with_custom_examples(self, prompt: str) -> None:
         assert isinstance(prompt, str)

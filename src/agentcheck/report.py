@@ -12,7 +12,7 @@ from rich.text import Text
 if TYPE_CHECKING:
     from agentcheck.types import InvariantViolation
 
-console = Console(stderr=True)
+console = Console(stderr=True, force_terminal=True)
 
 
 def report_failure(
@@ -51,16 +51,21 @@ def report_failure(
             table = Table(show_header=True, header_style="bold cyan", box=None, padding=(0, 1))
             table.add_column("#", style="dim", width=3)
             table.add_column("Tool", style="green")
+            table.add_column("Arguments", max_width=40)
             table.add_column("Intercepted", style="yellow")
             table.add_column("Result", max_width=60)
 
             for i, tc in enumerate(trace.tool_calls, 1):
+                args_str = repr(tc.arguments)
+                if len(args_str) > 40:
+                    args_str = args_str[:37] + "..."
                 result_str = repr(tc.result)
                 if len(result_str) > 60:
                     result_str = result_str[:57] + "..."
                 table.add_row(
                     str(i),
                     tc.name,
+                    args_str,
                     "yes" if tc.was_intercepted else "no",
                     result_str,
                 )

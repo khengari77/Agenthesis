@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-import contextlib
 import inspect
 import time
 from typing import TYPE_CHECKING, Any
 
-from agentcheck._context import consume_pending_limits, pop_context, push_context
+from agentcheck._context import (
+    pop_context,
+    push_context,
+    read_pending_limits,
+    record_test_intercept,
+)
 from agentcheck.types import AgentTrace, InterceptError, InvariantViolation, ToolCall, ToolKit
 
 if TYPE_CHECKING:
@@ -300,8 +304,9 @@ class Intercept:
 
         push_context(self)
 
-        # Ingest any limits set by invariant decorators before this context opened
-        limits = consume_pending_limits()
+        # Ingest any limits set by invariant decorators before this context opened.
+        # Read (not consume) so that multiple Intercepts in the same test all get the limits.
+        limits = read_pending_limits()
         if limits:
             if "max_steps" in limits:
                 self._max_steps = limits["max_steps"]
@@ -320,14 +325,16 @@ class Intercept:
             elif self._agent is not None and isinstance(self._agent, ToolKit):
                 self._agent.set_tool(name, original)
             elif self._agent is not None and hasattr(self._agent, f"tool_{name}"):
-                # If the original was a class-level attribute, remove the instance
-                # override instead of setting it, to avoid polluting __dict__.
-                class_attr = getattr(type(self._agent), f"tool_{name}", None)
-                if class_attr is original:
-                    with contextlib.suppress(AttributeError):
-                        delattr(self._agent, f"tool_{name}")
+                # __enter__ used setattr which injected a wrapper into the
+                # instance __dict__. Remove it so the class-level descriptor
+                # (if any) takes over again. This avoids trapping a bound
+                # method in __dict__ (which creates a circular reference).
+                attr_name = f"tool_{name}"
+                if attr_name in getattr(self._agent, "__dict__", {}):
+                    delattr(self._agent, attr_name)
                 else:
-                    setattr(self._agent, f"tool_{name}", original)
+                    setattr(self._agent, attr_name, original)
 
         self._trace = self._build_trace()
+        record_test_intercept(self)
         pop_context()

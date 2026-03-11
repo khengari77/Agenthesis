@@ -5,7 +5,7 @@ from __future__ import annotations
 import functools
 from typing import TYPE_CHECKING, Any
 
-from agentcheck._context import get_current_intercept, set_pending_limits
+from agentcheck._context import clear_test_state, get_all_test_intercepts, set_pending_limits
 from agentcheck.types import InvariantViolation
 
 if TYPE_CHECKING:
@@ -23,18 +23,21 @@ def max_steps(n: int) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             set_pending_limits(max_steps=n)
-            result = fn(*args, **kwargs)
+            try:
+                result = fn(*args, **kwargs)
 
-            # Post-mortem safety net
-            ctx = get_current_intercept()
-            trace = ctx.trace
-            if trace.steps > n:
-                raise InvariantViolation(
-                    invariant="max_steps",
-                    message=f"Agent took {trace.steps} steps, max allowed is {n}",
-                    trace=trace,
-                )
-            return result
+                # Post-mortem safety net — check ALL intercepts
+                for ctx in get_all_test_intercepts():
+                    trace = ctx.trace
+                    if trace.steps > n:
+                        raise InvariantViolation(
+                            invariant="max_steps",
+                            message=f"Agent took {trace.steps} steps, max allowed is {n}",
+                            trace=trace,
+                        )
+                return result
+            finally:
+                clear_test_state()
 
         return wrapper
 
@@ -47,20 +50,24 @@ def never_calls(tool_name: str) -> Callable[..., Any]:
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            result = fn(*args, **kwargs)
-            ctx = get_current_intercept()
-            trace = ctx.trace
-            forbidden_calls = [tc for tc in trace.tool_calls if tc.name == tool_name]
-            if forbidden_calls:
-                raise InvariantViolation(
-                    invariant="never_calls",
-                    message=(
-                        f"Tool '{tool_name}' was called {len(forbidden_calls)} time(s), "
-                        f"but should never be called"
-                    ),
-                    trace=trace,
-                )
-            return result
+            try:
+                result = fn(*args, **kwargs)
+
+                for ctx in get_all_test_intercepts():
+                    trace = ctx.trace
+                    forbidden_calls = [tc for tc in trace.tool_calls if tc.name == tool_name]
+                    if forbidden_calls:
+                        raise InvariantViolation(
+                            invariant="never_calls",
+                            message=(
+                                f"Tool '{tool_name}' was called {len(forbidden_calls)} time(s), "
+                                f"but should never be called"
+                            ),
+                            trace=trace,
+                        )
+                return result
+            finally:
+                clear_test_state()
 
         return wrapper
 
@@ -73,23 +80,27 @@ def requires_before(tool_a: str, tool_b: str) -> Callable[..., Any]:
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            result = fn(*args, **kwargs)
-            ctx = get_current_intercept()
-            trace = ctx.trace
-            names = [tc.name for tc in trace.tool_calls]
+            try:
+                result = fn(*args, **kwargs)
 
-            if tool_b in names:
-                b_index = names.index(tool_b)
-                if tool_a not in names[:b_index]:
-                    raise InvariantViolation(
-                        invariant="requires_before",
-                        message=(
-                            f"Tool '{tool_a}' must be called before '{tool_b}', "
-                            f"but call order was: {names}"
-                        ),
-                        trace=trace,
-                    )
-            return result
+                for ctx in get_all_test_intercepts():
+                    trace = ctx.trace
+                    names = [tc.name for tc in trace.tool_calls]
+
+                    if tool_b in names:
+                        b_index = names.index(tool_b)
+                        if tool_a not in names[:b_index]:
+                            raise InvariantViolation(
+                                invariant="requires_before",
+                                message=(
+                                    f"Tool '{tool_a}' must be called before '{tool_b}', "
+                                    f"but call order was: {names}"
+                                ),
+                                trace=trace,
+                            )
+                return result
+            finally:
+                clear_test_state()
 
         return wrapper
 
@@ -106,18 +117,21 @@ def max_llm_calls(n: int) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             set_pending_limits(max_llm_calls=n)
-            result = fn(*args, **kwargs)
+            try:
+                result = fn(*args, **kwargs)
 
-            # Post-mortem safety net
-            ctx = get_current_intercept()
-            trace = ctx.trace
-            if trace.llm_calls > n:
-                raise InvariantViolation(
-                    invariant="max_llm_calls",
-                    message=f"Agent made {trace.llm_calls} LLM calls, max allowed is {n}",
-                    trace=trace,
-                )
-            return result
+                # Post-mortem safety net — check ALL intercepts
+                for ctx in get_all_test_intercepts():
+                    trace = ctx.trace
+                    if trace.llm_calls > n:
+                        raise InvariantViolation(
+                            invariant="max_llm_calls",
+                            message=f"Agent made {trace.llm_calls} LLM calls, max allowed is {n}",
+                            trace=trace,
+                        )
+                return result
+            finally:
+                clear_test_state()
 
         return wrapper
 
@@ -134,21 +148,24 @@ def max_token_cost(max_tokens: int) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             set_pending_limits(max_tokens=max_tokens)
-            result = fn(*args, **kwargs)
+            try:
+                result = fn(*args, **kwargs)
 
-            # Post-mortem safety net
-            ctx = get_current_intercept()
-            trace = ctx.trace
-            if trace.total_tokens > max_tokens:
-                raise InvariantViolation(
-                    invariant="max_token_cost",
-                    message=(
-                        f"Agent used {trace.total_tokens} tokens, "
-                        f"max allowed is {max_tokens}"
-                    ),
-                    trace=trace,
-                )
-            return result
+                # Post-mortem safety net — check ALL intercepts
+                for ctx in get_all_test_intercepts():
+                    trace = ctx.trace
+                    if trace.total_tokens > max_tokens:
+                        raise InvariantViolation(
+                            invariant="max_token_cost",
+                            message=(
+                                f"Agent used {trace.total_tokens} tokens, "
+                                f"max allowed is {max_tokens}"
+                            ),
+                            trace=trace,
+                        )
+                return result
+            finally:
+                clear_test_state()
 
         return wrapper
 
@@ -173,34 +190,39 @@ def output_matches_schema(schema: dict[str, Any]) -> Callable[..., Any]:
                 )
                 raise ImportError(msg) from e
 
-            result = fn(*args, **kwargs)
-
-            # The result should be an AgentResult or have an 'output' attribute
-            output = result.output if hasattr(result, "output") else result
-
-            import json
-
             try:
-                parsed = json.loads(output) if isinstance(output, str) else output
-            except json.JSONDecodeError as e:
-                ctx = get_current_intercept()
-                raise InvariantViolation(
-                    invariant="output_matches_schema",
-                    message=f"Output is not valid JSON: {e}",
-                    trace=ctx.trace,
-                ) from e
+                result = fn(*args, **kwargs)
 
-            try:
-                jsonschema.validate(parsed, schema)
-            except jsonschema.ValidationError as e:
-                ctx = get_current_intercept()
-                raise InvariantViolation(
-                    invariant="output_matches_schema",
-                    message=f"Output does not match schema: {e.message}",
-                    trace=ctx.trace,
-                ) from e
+                # The result should be an AgentResult or have an 'output' attribute
+                output = result.output if hasattr(result, "output") else result
 
-            return result
+                import json
+
+                try:
+                    parsed = json.loads(output) if isinstance(output, str) else output
+                except json.JSONDecodeError as e:
+                    intercepts = get_all_test_intercepts()
+                    trace = intercepts[-1].trace if intercepts else None
+                    raise InvariantViolation(
+                        invariant="output_matches_schema",
+                        message=f"Output is not valid JSON: {e}",
+                        trace=trace,
+                    ) from e
+
+                try:
+                    jsonschema.validate(parsed, schema)
+                except jsonschema.ValidationError as e:
+                    intercepts = get_all_test_intercepts()
+                    trace = intercepts[-1].trace if intercepts else None
+                    raise InvariantViolation(
+                        invariant="output_matches_schema",
+                        message=f"Output does not match schema: {e.message}",
+                        trace=trace,
+                    ) from e
+
+                return result
+            finally:
+                clear_test_state()
 
         return wrapper
 
