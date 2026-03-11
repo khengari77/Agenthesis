@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import contextlib
 import time
 from typing import TYPE_CHECKING, Any
 
 from agentcheck._context import pop_context, push_context
-from agentcheck.types import AgentTrace, InterceptError, ToolCall, ToolKit
+from agentcheck.types import AgentTrace, InterceptError, InvariantViolation, ToolCall, ToolKit
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -104,6 +105,9 @@ class Intercept:
         self._step_counter: int = 0
         self._llm_call_counter: int = 0
         self._token_counter: int = 0
+        self._max_steps: int | None = None
+        self._max_tokens: int | None = None
+        self._max_llm_calls: int | None = None
 
     def on(self, tool_name: str) -> ToolStub:
         """Configure stub behavior for a named tool."""
@@ -112,14 +116,50 @@ class Intercept:
         self._stubs[tool_name] = stub
         return stub
 
+    def set_step_limit(self, n: int) -> None:
+        """Set a runtime step limit that aborts execution immediately."""
+        self._max_steps = n
+
+    def set_token_limit(self, n: int) -> None:
+        """Set a runtime token limit that aborts execution immediately."""
+        self._max_tokens = n
+
+    def set_llm_call_limit(self, n: int) -> None:
+        """Set a runtime LLM call limit that aborts execution immediately."""
+        self._max_llm_calls = n
+
     def record_step(self) -> None:
         """Manually record an agent step (for agents that report steps)."""
         self._step_counter += 1
+        if self._max_steps is not None and self._step_counter > self._max_steps:
+            raise InvariantViolation(
+                invariant="max_steps",
+                message=f"Agent took {self._step_counter} steps, max allowed is {self._max_steps}",
+                trace=self._build_trace(),
+            )
 
     def record_llm_call(self, tokens: int = 0) -> None:
         """Manually record an LLM call with optional token count."""
         self._llm_call_counter += 1
         self._token_counter += tokens
+        if self._max_llm_calls is not None and self._llm_call_counter > self._max_llm_calls:
+            raise InvariantViolation(
+                invariant="max_llm_calls",
+                message=(
+                    f"Agent made {self._llm_call_counter} LLM calls, "
+                    f"max allowed is {self._max_llm_calls}"
+                ),
+                trace=self._build_trace(),
+            )
+        if self._max_tokens is not None and self._token_counter > self._max_tokens:
+            raise InvariantViolation(
+                invariant="max_token_cost",
+                message=(
+                    f"Agent used {self._token_counter} tokens, "
+                    f"max allowed is {self._max_tokens}"
+                ),
+                trace=self._build_trace(),
+            )
 
     @property
     def trace(self) -> AgentTrace:
@@ -164,6 +204,23 @@ class Intercept:
                 was_intercepted=was_intercepted,
             )
             intercept._calls.append(call)
+
+            # Runtime step enforcement: when no manual record_step() is used,
+            # steps defaults to len(calls), so check the limit here too.
+            if (
+                intercept._max_steps is not None
+                and intercept._step_counter == 0
+                and len(intercept._calls) > intercept._max_steps
+            ):
+                raise InvariantViolation(
+                    invariant="max_steps",
+                    message=(
+                        f"Agent took {len(intercept._calls)} steps, "
+                        f"max allowed is {intercept._max_steps}"
+                    ),
+                    trace=intercept._build_trace(),
+                )
+
             return result
 
         return wrapper
@@ -223,7 +280,14 @@ class Intercept:
             elif self._agent is not None and isinstance(self._agent, ToolKit):
                 self._agent.set_tool(name, original)
             elif self._agent is not None and hasattr(self._agent, f"tool_{name}"):
-                setattr(self._agent, f"tool_{name}", original)
+                # If the original was a class-level attribute, remove the instance
+                # override instead of setting it, to avoid polluting __dict__.
+                class_attr = getattr(type(self._agent), f"tool_{name}", None)
+                if class_attr is original:
+                    with contextlib.suppress(AttributeError):
+                        delattr(self._agent, f"tool_{name}")
+                else:
+                    setattr(self._agent, f"tool_{name}", original)
 
         self._trace = self._build_trace()
         pop_context()

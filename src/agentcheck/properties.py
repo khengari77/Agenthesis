@@ -13,12 +13,24 @@ if TYPE_CHECKING:
 
 
 def max_steps(n: int) -> Callable[..., Any]:
-    """Assert that the agent completes in at most n steps."""
+    """Assert that the agent completes in at most n steps.
+
+    Sets a runtime limit on the Intercept context so execution aborts
+    immediately when exceeded, then also validates post-mortem as a safety net.
+    """
 
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
+            # Set runtime limit before execution
+            try:
+                ctx = get_current_intercept()
+                ctx.set_step_limit(n)
+            except Exception:  # noqa: BLE001
+                pass  # No active context yet; post-mortem check will catch it
+
             result = fn(*args, **kwargs)
+
             ctx = get_current_intercept()
             trace = ctx.trace
             if trace.steps > n:
@@ -90,12 +102,22 @@ def requires_before(tool_a: str, tool_b: str) -> Callable[..., Any]:
 
 
 def max_llm_calls(n: int) -> Callable[..., Any]:
-    """Assert that the agent makes at most n LLM calls."""
+    """Assert that the agent makes at most n LLM calls.
+
+    Sets a runtime limit so execution aborts immediately when exceeded.
+    """
 
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
+            try:
+                ctx = get_current_intercept()
+                ctx.set_llm_call_limit(n)
+            except Exception:  # noqa: BLE001
+                pass
+
             result = fn(*args, **kwargs)
+
             ctx = get_current_intercept()
             trace = ctx.trace
             if trace.llm_calls > n:
@@ -112,12 +134,22 @@ def max_llm_calls(n: int) -> Callable[..., Any]:
 
 
 def max_token_cost(max_tokens: int) -> Callable[..., Any]:
-    """Assert that total token usage stays within budget."""
+    """Assert that total token usage stays within budget.
+
+    Sets a runtime limit so execution aborts immediately when exceeded.
+    """
 
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
+            try:
+                ctx = get_current_intercept()
+                ctx.set_token_limit(max_tokens)
+            except Exception:  # noqa: BLE001
+                pass
+
             result = fn(*args, **kwargs)
+
             ctx = get_current_intercept()
             trace = ctx.trace
             if trace.total_tokens > max_tokens:

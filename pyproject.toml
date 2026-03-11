@@ -11,8 +11,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-parsec = ["pyarsec>=0.1.0"]
 json = ["jsonschema>=4.20.0"]
+
+[project.entry-points.pytest11]
+agentcheck = "agentcheck.plugin"
 
 [dependency-groups]
 dev = [

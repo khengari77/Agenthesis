@@ -13,6 +13,7 @@ from agentcheck.properties import (
     output_matches_schema,
     requires_before,
 )
+from agentcheck.shrink import PromptShrinker, SequenceShrinker
 from agentcheck.types import (
     AgentCheckError,
     AgentProtocol,
@@ -35,6 +36,8 @@ __all__ = [
     "ToolCall",
     "ToolKit",
     "given",
+    "PromptShrinker",
+    "SequenceShrinker",
     "max_llm_calls",
     "max_steps",
     "max_token_cost",

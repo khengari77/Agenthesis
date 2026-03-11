@@ -1,8 +1,11 @@
-"""Thread-local context stack for connecting Intercept to invariant decorators."""
+"""Context stack for connecting Intercept to invariant decorators.
+
+Uses contextvars.ContextVar for safe behavior in both threaded and async contexts.
+"""
 
 from __future__ import annotations
 
-import threading
+import contextvars
 from typing import TYPE_CHECKING
 
 from agentcheck.types import AgentCheckError
@@ -10,14 +13,21 @@ from agentcheck.types import AgentCheckError
 if TYPE_CHECKING:
     from agentcheck.intercept import Intercept
 
-_context_stack = threading.local()
+_context_stack: contextvars.ContextVar[list[Intercept] | None] = contextvars.ContextVar(
+    "_context_stack", default=None
+)
+_context_last: contextvars.ContextVar[Intercept | None] = contextvars.ContextVar(
+    "_context_last", default=None
+)
 
 
 def push_context(ctx: Intercept) -> None:
-    """Push an Intercept context onto the thread-local stack."""
-    if not hasattr(_context_stack, "stack"):
-        _context_stack.stack = []
-    _context_stack.stack.append(ctx)
+    """Push an Intercept context onto the stack."""
+    stack = _context_stack.get()
+    if stack is None:
+        _context_stack.set([ctx])
+    else:
+        stack.append(ctx)
 
 
 def pop_context() -> Intercept:
@@ -26,12 +36,12 @@ def pop_context() -> Intercept:
     The popped context is saved as 'last' so invariant decorators
     can access it after the with-block exits.
     """
-    stack: list[Intercept] = getattr(_context_stack, "stack", [])
+    stack = _context_stack.get()
     if not stack:
         msg = "No active Intercept context to pop"
         raise AgentCheckError(msg)
     ctx = stack.pop()
-    _context_stack.last = ctx
+    _context_last.set(ctx)
     return ctx
 
 
@@ -41,11 +51,11 @@ def get_current_intercept() -> Intercept:
     First checks the active stack, then falls back to the last exited context.
     This allows invariant decorators to work both inside and after a with-block.
     """
-    stack: list[Intercept] = getattr(_context_stack, "stack", [])
-    if stack:
+    stack = _context_stack.get()
+    if stack:  # handles both None and empty list
         return stack[-1]
 
-    last: Intercept | None = getattr(_context_stack, "last", None)
+    last = _context_last.get()
     if last is not None:
         return last
 
