@@ -304,7 +304,14 @@ class Intercept:
             elif self._agent is not None and isinstance(self._agent, ToolKit):
                 self._agent.set_tool(name, wrapped)
             elif self._agent is not None and hasattr(self._agent, f"tool_{name}"):
-                setattr(self._agent, f"tool_{name}", wrapped)
+                try:
+                    setattr(self._agent, f"tool_{name}", wrapped)
+                except AttributeError as e:
+                    msg = (
+                        f"Cannot intercept tool_{name} on {type(self._agent).__name__}: "
+                        f"class uses __slots__ without a 'tool_{name}' slot"
+                    )
+                    raise InterceptError(msg) from e
 
         push_context(self)
 
@@ -329,14 +336,12 @@ class Intercept:
             elif self._agent is not None and isinstance(self._agent, ToolKit):
                 self._agent.set_tool(name, original)
             elif self._agent is not None and hasattr(self._agent, f"tool_{name}"):
-                # __enter__ used setattr which injected a wrapper into the
-                # instance __dict__. Remove it so the class-level descriptor
-                # (if any) takes over again. This avoids trapping a bound
-                # method in __dict__ (which creates a circular reference).
                 attr_name = f"tool_{name}"
                 if attr_name in getattr(self._agent, "__dict__", {}):
+                    # Instance __dict__ exists: remove wrapper so class descriptor is restored
                     delattr(self._agent, attr_name)
                 else:
+                    # __slots__ or no __dict__: restore original value directly
                     setattr(self._agent, attr_name, original)
 
         self._trace = self._build_trace()

@@ -20,6 +20,15 @@ if TYPE_CHECKING:
     from agentcheck._testing import DummyAgent
 
 
+def _has_lark() -> bool:
+    try:
+        import lark  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
 class TestMaxSteps:
     def test_passes_within_limit(self, agent: DummyAgent) -> None:
         @max_steps(5)
@@ -246,4 +255,120 @@ class TestMultiAgentRequiresBefore:
                 agent_b.run("hello")
 
         with pytest.raises(InvariantViolation, match="requires_before"):
+            run_test()
+
+
+class TestMarkdownJsonStripping:
+    def test_json_with_fence(self) -> None:
+        from agentcheck.properties import output_matches_schema
+
+        schema = {"type": "object", "properties": {"key": {"type": "string"}}}
+
+        @output_matches_schema(schema)
+        def run_test():
+            return '```json\n{"key":"val"}\n```'
+
+        run_test()
+
+    def test_json_with_bare_fence(self) -> None:
+        from agentcheck.properties import output_matches_schema
+
+        schema = {"type": "object", "properties": {"key": {"type": "string"}}}
+
+        @output_matches_schema(schema)
+        def run_test():
+            return '```\n{"key":"val"}\n```'
+
+        run_test()
+
+    def test_plain_json_still_works(self) -> None:
+        from agentcheck.properties import output_matches_schema
+
+        schema = {"type": "object", "properties": {"key": {"type": "string"}}}
+
+        @output_matches_schema(schema)
+        def run_test():
+            return '{"key":"val"}'
+
+        run_test()
+
+    def test_invalid_json_in_fence_still_fails(self) -> None:
+        from agentcheck.properties import output_matches_schema
+
+        schema = {"type": "object"}
+
+        @output_matches_schema(schema)
+        def run_test():
+            return "```json\nnot valid json\n```"
+
+        with pytest.raises(InvariantViolation, match="output_matches_schema"):
+            run_test()
+
+
+class TestOutputMatchesGrammar:
+    def test_callable_parser_passes(self) -> None:
+        from agentcheck.properties import output_matches_grammar
+
+        def my_parser(text: str) -> None:
+            if not text.startswith("OK"):
+                raise ValueError("must start with OK")
+
+        @output_matches_grammar(my_parser)
+        def run_test():
+            return "OK everything is fine"
+
+        run_test()
+
+    def test_callable_parser_fails(self) -> None:
+        from agentcheck.properties import output_matches_grammar
+
+        def my_parser(text: str) -> None:
+            if not text.startswith("OK"):
+                raise ValueError("must start with OK")
+
+        @output_matches_grammar(my_parser)
+        def run_test():
+            return "ERROR something went wrong"
+
+        with pytest.raises(InvariantViolation, match="output_matches_grammar"):
+            run_test()
+
+    @pytest.mark.skipif(not _has_lark(), reason="lark not installed")
+    def test_lark_grammar_passes(self) -> None:
+        from agentcheck.properties import lark_grammar, output_matches_grammar
+
+        parser = lark_grammar(
+            '''
+            start: greeting NAME
+            greeting: "hello" | "hi"
+            NAME: /[a-z]+/
+            %import common.WS
+            %ignore WS
+            ''',
+        )
+
+        @output_matches_grammar(parser)
+        def run_test():
+            return "hello world"
+
+        run_test()
+
+    @pytest.mark.skipif(not _has_lark(), reason="lark not installed")
+    def test_lark_grammar_fails(self) -> None:
+        from agentcheck.properties import lark_grammar, output_matches_grammar
+
+        parser = lark_grammar(
+            '''
+            start: "hello" NAME
+            NAME: /[a-z]+/
+            %import common.WS
+            %ignore WS
+            ''',
+        )
+
+        @output_matches_grammar(parser)
+        def run_test():
+            return "goodbye world"
+
+        with pytest.raises(InvariantViolation, match="output_matches_grammar"):
             run_test()

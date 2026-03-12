@@ -197,6 +197,44 @@ class TestIntercept:
         assert ctx.trace.tool_calls[0].was_intercepted is False
 
 
+class TestSlotsAgent:
+    def test_slots_agent_intercept_and_restore(self) -> None:
+        """Agent with __slots__ can be intercepted and restored."""
+
+        class SlotsAgent:
+            __slots__ = ("tool_greet",)
+
+            def __init__(self):
+                self.tool_greet = lambda name="world": f"hello {name}"
+
+        agent = SlotsAgent()
+        original = agent.tool_greet
+
+        with Intercept(agent) as ctx:
+            ctx.on("greet").respond("mocked")
+            assert agent.tool_greet() == "mocked"
+
+        # After exit, original should be restored
+        assert agent.tool_greet is original
+        assert agent.tool_greet() == "hello world"
+
+    def test_slots_agent_missing_slot_raises(self) -> None:
+        """Missing slot raises clear InterceptError."""
+
+        class SlotsAgent:
+            __slots__ = ()
+
+            def __init__(self):
+                pass
+
+        # Add a class-level tool method that can't be overridden on instances
+        SlotsAgent.tool_greet = lambda self, name="world": f"hello {name}"
+
+        agent = SlotsAgent()
+        with pytest.raises(InterceptError, match="__slots__"), Intercept(agent):
+            pass
+
+
 class TestToolStub:
     def test_respond_sequence_empty(self, agent: DummyAgent) -> None:
         with Intercept(agent) as ctx:

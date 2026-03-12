@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import functools
+import json
+import re
 from typing import TYPE_CHECKING, Any
 
 from agentcheck._context import (
@@ -15,6 +17,16 @@ from agentcheck.types import InvariantViolation
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+_MARKDOWN_JSON_RE = re.compile(
+    r"^\s*```[a-zA-Z]*\s*\n(.*?)\n\s*```\s*$",
+    re.DOTALL,
+)
+
+
+def _strip_markdown_fences(text: str) -> str:
+    match = _MARKDOWN_JSON_RE.match(text)
+    return match.group(1).strip() if match else text.strip()
 
 
 def max_steps(n: int) -> Callable[..., Any]:
@@ -207,10 +219,11 @@ def output_matches_schema(schema: dict[str, Any]) -> Callable[..., Any]:
                 # The result should be an AgentResult or have an 'output' attribute
                 output = result.output if hasattr(result, "output") else result
 
-                import json
-
                 try:
-                    parsed = json.loads(output) if isinstance(output, str) else output
+                    if isinstance(output, str):
+                        parsed = json.loads(_strip_markdown_fences(output))
+                    else:
+                        parsed = output
                 except json.JSONDecodeError as e:
                     intercepts = get_all_test_intercepts()
                     trace = intercepts[-1].trace if intercepts else None
@@ -238,3 +251,61 @@ def output_matches_schema(schema: dict[str, Any]) -> Callable[..., Any]:
         return wrapper
 
     return decorator
+
+
+def output_matches_grammar(parser: Callable[[str], Any]) -> Callable[..., Any]:
+    """Assert that the agent's output conforms to a grammar.
+
+    Args:
+        parser: Any callable that accepts a string and raises on invalid input.
+            Can be a lark parser, a custom function, etc.
+    """
+
+    def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
+        @functools.wraps(fn)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            enter_decorator()
+            try:
+                result = fn(*args, **kwargs)
+
+                output = result.output if hasattr(result, "output") else result
+
+                if not isinstance(output, str):
+                    output = str(output)
+
+                try:
+                    parser(output)
+                except Exception as e:
+                    intercepts = get_all_test_intercepts()
+                    trace = intercepts[-1].trace if intercepts else None
+                    raise InvariantViolation(
+                        invariant="output_matches_grammar",
+                        message=f"Output does not match grammar: {e}",
+                        trace=trace,
+                    ) from e
+
+                return result
+            finally:
+                exit_decorator()
+
+        return wrapper
+
+    return decorator
+
+
+def lark_grammar(grammar_str: str, start: str = "start") -> Callable[[str], Any]:
+    """Create a parser from a Lark grammar string.
+
+    Requires the 'grammar' optional dependency: pip install agentcheck[grammar]
+    """
+    try:
+        from lark import Lark
+    except ImportError as e:
+        msg = (
+            "lark is required for lark_grammar. "
+            "Install with: pip install agentcheck[grammar]"
+        )
+        raise ImportError(msg) from e
+
+    lark_parser = Lark(grammar_str, start=start)
+    return lark_parser.parse
