@@ -5,7 +5,12 @@ from __future__ import annotations
 import functools
 from typing import TYPE_CHECKING, Any
 
-from agentcheck._context import clear_test_state, get_all_test_intercepts, set_pending_limits
+from agentcheck._context import (
+    enter_decorator,
+    exit_decorator,
+    get_all_test_intercepts,
+    set_pending_limits,
+)
 from agentcheck.types import InvariantViolation
 
 if TYPE_CHECKING:
@@ -22,6 +27,7 @@ def max_steps(n: int) -> Callable[..., Any]:
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
+            enter_decorator()
             set_pending_limits(max_steps=n)
             try:
                 result = fn(*args, **kwargs)
@@ -37,7 +43,7 @@ def max_steps(n: int) -> Callable[..., Any]:
                         )
                 return result
             finally:
-                clear_test_state()
+                exit_decorator()
 
         return wrapper
 
@@ -50,6 +56,7 @@ def never_calls(tool_name: str) -> Callable[..., Any]:
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
+            enter_decorator()
             try:
                 result = fn(*args, **kwargs)
 
@@ -67,7 +74,7 @@ def never_calls(tool_name: str) -> Callable[..., Any]:
                         )
                 return result
             finally:
-                clear_test_state()
+                exit_decorator()
 
         return wrapper
 
@@ -80,6 +87,7 @@ def requires_before(tool_a: str, tool_b: str) -> Callable[..., Any]:
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
+            enter_decorator()
             try:
                 result = fn(*args, **kwargs)
 
@@ -100,7 +108,7 @@ def requires_before(tool_a: str, tool_b: str) -> Callable[..., Any]:
                             )
                 return result
             finally:
-                clear_test_state()
+                exit_decorator()
 
         return wrapper
 
@@ -116,6 +124,7 @@ def max_llm_calls(n: int) -> Callable[..., Any]:
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
+            enter_decorator()
             set_pending_limits(max_llm_calls=n)
             try:
                 result = fn(*args, **kwargs)
@@ -131,7 +140,7 @@ def max_llm_calls(n: int) -> Callable[..., Any]:
                         )
                 return result
             finally:
-                clear_test_state()
+                exit_decorator()
 
         return wrapper
 
@@ -147,6 +156,7 @@ def max_token_cost(max_tokens: int) -> Callable[..., Any]:
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
+            enter_decorator()
             set_pending_limits(max_tokens=max_tokens)
             try:
                 result = fn(*args, **kwargs)
@@ -165,7 +175,7 @@ def max_token_cost(max_tokens: int) -> Callable[..., Any]:
                         )
                 return result
             finally:
-                clear_test_state()
+                exit_decorator()
 
         return wrapper
 
@@ -190,6 +200,7 @@ def output_matches_schema(schema: dict[str, Any]) -> Callable[..., Any]:
                 )
                 raise ImportError(msg) from e
 
+            enter_decorator()
             try:
                 result = fn(*args, **kwargs)
 
@@ -222,7 +233,7 @@ def output_matches_schema(schema: dict[str, Any]) -> Callable[..., Any]:
 
                 return result
             finally:
-                clear_test_state()
+                exit_decorator()
 
         return wrapper
 

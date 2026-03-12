@@ -28,6 +28,9 @@ _pending_limits: contextvars.ContextVar[dict[str, int] | None] = contextvars.Con
 _test_intercepts: contextvars.ContextVar[tuple[Intercept, ...]] = contextvars.ContextVar(
     "_test_intercepts", default=()
 )
+_decorator_depth: contextvars.ContextVar[int] = contextvars.ContextVar(
+    "_decorator_depth", default=0
+)
 
 
 def push_context(ctx: Intercept) -> None:
@@ -79,7 +82,7 @@ def set_pending_limits(**limits: int) -> None:
     if current is None:
         _pending_limits.set(dict(limits))
     else:
-        current.update(limits)
+        _pending_limits.set({**current, **limits})
 
 
 def read_pending_limits() -> dict[str, int] | None:
@@ -113,6 +116,19 @@ def clear_test_state() -> None:
     """Clear all test-scoped state: pending limits and recorded intercepts."""
     _pending_limits.set(None)
     _test_intercepts.set(())
+
+
+def enter_decorator() -> None:
+    """Increment decorator depth. Called at the start of each invariant decorator."""
+    _decorator_depth.set(_decorator_depth.get() + 1)
+
+
+def exit_decorator() -> None:
+    """Decrement decorator depth. Only the outermost decorator clears test state."""
+    depth = _decorator_depth.get() - 1
+    _decorator_depth.set(depth)
+    if depth == 0:
+        clear_test_state()
 
 
 # Backward-compatible alias

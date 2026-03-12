@@ -65,10 +65,14 @@ class ToolStub:
         if self._mode == "respond":
             return self._value
         if self._mode == "respond_with":
-            assert self._fn is not None
+            if self._fn is None:
+                msg = "Stub configured for 'respond_with' but no function was provided"
+                raise InterceptError(msg)
             return self._fn(*args, **kwargs)
         if self._mode == "raise_error":
-            assert self._exception is not None
+            if self._exception is None:
+                msg = "Stub configured for 'raise_error' but no exception was provided"
+                raise InterceptError(msg)
             raise self._exception
         if self._mode == "respond_sequence":
             if not self._sequence:

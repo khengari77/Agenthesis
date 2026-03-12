@@ -188,6 +188,49 @@ class TestMultiAgentNeverCalls:
             run_test()
 
 
+class TestStackedDecorators:
+    def test_stacked_max_steps_and_never_calls(self, agent: DummyAgent) -> None:
+        """Both decorators validate when stacked."""
+
+        @max_steps(10)
+        @never_calls("search")
+        def run_test():
+            with Intercept(agent):
+                agent.run("search for something")  # violates never_calls
+
+        with pytest.raises(InvariantViolation, match="never_calls"):
+            run_test()
+
+    def test_stacked_outer_catches_violation(self, agent: DummyAgent) -> None:
+        """Outer decorator catches violation even after inner passes."""
+
+        @max_steps(0)
+        @never_calls("nonexistent")
+        def run_test():
+            with Intercept(agent):
+                agent.run("calculate math")  # 1 tool call step, violates max_steps(0)
+
+        with pytest.raises(InvariantViolation, match="max_steps"):
+            run_test()
+
+    def test_stacked_multi_agent(self, agent: DummyAgent) -> None:
+        """Stacked decorators + multi-agent: outer sees all intercepts."""
+        from agentcheck._testing import DummyAgent as DummyAgentFactory
+
+        agent_b = DummyAgentFactory()
+
+        @max_steps(10)
+        @never_calls("search")
+        def run_test():
+            with Intercept(agent):
+                agent.run("search for info")  # violates never_calls
+            with Intercept(agent_b):
+                agent_b.run("hello")
+
+        with pytest.raises(InvariantViolation, match="never_calls"):
+            run_test()
+
+
 class TestMultiAgentRequiresBefore:
     def test_catches_order_violation_in_earlier_agent(self, agent: DummyAgent) -> None:
         """Ordering violation in first agent caught even when second is clean."""

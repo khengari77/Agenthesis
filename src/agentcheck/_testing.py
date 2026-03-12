@@ -138,7 +138,14 @@ class DummyAgent:
 
     @staticmethod
     def _builtin_calculator(expression: str = "0") -> dict[str, Any]:
-        return {"result": eval(expression), "expression": expression}  # noqa: S307
+        allowed = set("0123456789+-*/ ()")
+        if not all(c in allowed for c in expression):
+            return {"result": "error", "expression": expression}
+        try:
+            result = eval(expression, {"__builtins__": {}}, {})  # noqa: S307
+        except Exception:
+            result = "error"
+        return {"result": result, "expression": expression}
 
     @staticmethod
     def _builtin_search(query: str = "") -> dict[str, Any]:
