@@ -12,7 +12,14 @@ from agentcheck._context import (
     read_pending_limits,
     record_test_intercept,
 )
-from agentcheck.types import AgentTrace, InterceptError, InvariantViolation, ToolCall, ToolKit
+from agentcheck.types import (
+    AgentTrace,
+    InterceptError,
+    InvariantViolation,
+    ToolCall,
+    ToolKit,
+    ToolResolver,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -88,6 +95,71 @@ class ToolStub:
         raise InterceptError(msg)
 
 
+class DefaultResolver:
+    """Default resolver: ToolKit protocol, explicit dicts, and tool_* attributes."""
+
+    def resolve(
+        self, agent: Any, explicit_tools: dict[str, Callable[..., Any]] | None
+    ) -> dict[str, Callable[..., Any]]:
+        if explicit_tools is not None:
+            return dict(explicit_tools)
+
+        if agent is not None and isinstance(agent, ToolKit):
+            return agent.get_tools()
+
+        if agent is not None:
+            tools: dict[str, Callable[..., Any]] = {}
+            for attr_name in dir(agent):
+                if attr_name.startswith("tool_"):
+                    attr = getattr(agent, attr_name)
+                    if callable(attr):
+                        tool_name = attr_name[5:]  # strip "tool_" prefix
+                        tools[tool_name] = attr
+            if tools:
+                return tools
+
+        return {}
+
+    def install(
+        self,
+        agent: Any,
+        explicit_tools: dict[str, Callable[..., Any]] | None,
+        name: str,
+        wrapper: Callable[..., Any],
+    ) -> None:
+        if explicit_tools is not None:
+            explicit_tools[name] = wrapper
+        elif agent is not None and isinstance(agent, ToolKit):
+            agent.set_tool(name, wrapper)
+        elif agent is not None and hasattr(agent, f"tool_{name}"):
+            try:
+                setattr(agent, f"tool_{name}", wrapper)
+            except AttributeError as e:
+                msg = (
+                    f"Cannot intercept tool_{name} on {type(agent).__name__}: "
+                    f"class uses __slots__ without a 'tool_{name}' slot"
+                )
+                raise InterceptError(msg) from e
+
+    def restore(
+        self,
+        agent: Any,
+        explicit_tools: dict[str, Callable[..., Any]] | None,
+        name: str,
+        original: Callable[..., Any],
+    ) -> None:
+        if explicit_tools is not None:
+            explicit_tools[name] = original
+        elif agent is not None and isinstance(agent, ToolKit):
+            agent.set_tool(name, original)
+        elif agent is not None and hasattr(agent, f"tool_{name}"):
+            attr_name = f"tool_{name}"
+            if attr_name in getattr(agent, "__dict__", {}):
+                delattr(agent, attr_name)
+            else:
+                setattr(agent, attr_name, original)
+
+
 class Intercept:
     """Context manager for intercepting agent tool calls.
 
@@ -103,9 +175,12 @@ class Intercept:
         self,
         agent: Any | None = None,
         tools: dict[str, Callable[..., Any]] | None = None,
+        *,
+        resolver: ToolResolver | None = None,
     ) -> None:
         self._agent = agent
         self._explicit_tools = tools
+        self._resolver: ToolResolver = resolver if resolver is not None else DefaultResolver()
         self._stubs: dict[str, ToolStub] = {}
         self._calls: list[ToolCall] = []
         self._originals: dict[str, Callable[..., Any]] = {}
@@ -264,25 +339,7 @@ class Intercept:
 
     def _resolve_tools(self) -> dict[str, Callable[..., Any]]:
         """Resolve the tools to intercept from agent or explicit dict."""
-        if self._explicit_tools is not None:
-            return dict(self._explicit_tools)
-
-        if self._agent is not None and isinstance(self._agent, ToolKit):
-            return self._agent.get_tools()
-
-        if self._agent is not None:
-            # Try attribute-based discovery
-            tools: dict[str, Callable[..., Any]] = {}
-            for attr_name in dir(self._agent):
-                if attr_name.startswith("tool_"):
-                    attr = getattr(self._agent, attr_name)
-                    if callable(attr):
-                        tool_name = attr_name[5:]  # strip "tool_" prefix
-                        tools[tool_name] = attr
-            if tools:
-                return tools
-
-        return {}
+        return self._resolver.resolve(self._agent, self._explicit_tools)
 
     def __enter__(self) -> Intercept:
         self._start_time = time.monotonic()
@@ -297,21 +354,7 @@ class Intercept:
         for name, fn in tools.items():
             self._originals[name] = fn
             wrapped = self._make_wrapper(name, fn)
-
-            # Install the wrapper
-            if self._explicit_tools is not None:
-                self._explicit_tools[name] = wrapped
-            elif self._agent is not None and isinstance(self._agent, ToolKit):
-                self._agent.set_tool(name, wrapped)
-            elif self._agent is not None and hasattr(self._agent, f"tool_{name}"):
-                try:
-                    setattr(self._agent, f"tool_{name}", wrapped)
-                except AttributeError as e:
-                    msg = (
-                        f"Cannot intercept tool_{name} on {type(self._agent).__name__}: "
-                        f"class uses __slots__ without a 'tool_{name}' slot"
-                    )
-                    raise InterceptError(msg) from e
+            self._resolver.install(self._agent, self._explicit_tools, name, wrapped)
 
         push_context(self)
 
@@ -331,18 +374,7 @@ class Intercept:
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         # Restore original tools
         for name, original in self._originals.items():
-            if self._explicit_tools is not None:
-                self._explicit_tools[name] = original
-            elif self._agent is not None and isinstance(self._agent, ToolKit):
-                self._agent.set_tool(name, original)
-            elif self._agent is not None and hasattr(self._agent, f"tool_{name}"):
-                attr_name = f"tool_{name}"
-                if attr_name in getattr(self._agent, "__dict__", {}):
-                    # Instance __dict__ exists: remove wrapper so class descriptor is restored
-                    delattr(self._agent, attr_name)
-                else:
-                    # __slots__ or no __dict__: restore original value directly
-                    setattr(self._agent, attr_name, original)
+            self._resolver.restore(self._agent, self._explicit_tools, name, original)
 
         self._trace = self._build_trace()
         record_test_intercept(self)

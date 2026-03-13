@@ -25,6 +25,7 @@ from agentcheck.types import (
     InvariantViolation,
     ToolCall,
     ToolKit,
+    ToolResolver,
 )
 
 __all__ = [
@@ -37,6 +38,7 @@ __all__ = [
     "InvariantViolation",
     "ToolCall",
     "ToolKit",
+    "ToolResolver",
     "given",
     "lark_grammar",
     "PromptShrinker",

@@ -52,6 +52,27 @@ class ToolKit(Protocol):
 
 
 @runtime_checkable
+class ToolResolver(Protocol):
+    """Protocol for pluggable tool resolution strategies."""
+
+    def resolve(self, agent: Any, explicit_tools: dict[str, Any] | None) -> dict[str, Any]:
+        """Discover tools from the agent or explicit dict."""
+        ...
+
+    def install(
+        self, agent: Any, explicit_tools: dict[str, Any] | None, name: str, wrapper: Any
+    ) -> None:
+        """Install a wrapped tool on the agent or dict."""
+        ...
+
+    def restore(
+        self, agent: Any, explicit_tools: dict[str, Any] | None, name: str, original: Any
+    ) -> None:
+        """Restore the original tool on the agent or dict."""
+        ...
+
+
+@runtime_checkable
 class AgentProtocol(Protocol):
     """Minimal protocol that any agent must satisfy to be testable."""
 
