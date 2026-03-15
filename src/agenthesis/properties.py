@@ -5,17 +5,19 @@ from __future__ import annotations
 import functools
 import json
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
 
 from agenthesis._context import (
     decorator_scope,
     get_all_test_intercepts,
-    set_pending_limits,
 )
 from agenthesis.types import InvariantViolation
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+P = ParamSpec("P")
+R = TypeVar("R")
 
 _MARKDOWN_JSON_RE = re.compile(
     r"^\s*```[a-zA-Z]*\s*\n(.*?)\n\s*```\s*$",
@@ -28,18 +30,17 @@ def _strip_markdown_fences(text: str) -> str:
     return match.group(1).strip() if match else text.strip()
 
 
-def max_steps(n: int) -> Callable[..., Any]:
+def max_steps(n: int) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Assert that the agent completes in at most n steps.
 
     Sets a runtime limit on the Intercept context so execution aborts
     immediately when exceeded, then also validates post-mortem as a safety net.
     """
 
-    def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
+    def decorator(fn: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(fn)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            with decorator_scope():
-                set_pending_limits(max_steps=n)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            with decorator_scope(max_steps=n):
                 result = fn(*args, **kwargs)
 
                 # Post-mortem safety net — check ALL intercepts
@@ -53,17 +54,17 @@ def max_steps(n: int) -> Callable[..., Any]:
                         )
                 return result
 
-        return wrapper
+        return wrapper  # type: ignore[return-value]
 
     return decorator
 
 
-def never_calls(tool_name: str) -> Callable[..., Any]:
+def never_calls(tool_name: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Assert that the named tool is never invoked."""
 
-    def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
+    def decorator(fn: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(fn)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             with decorator_scope():
                 result = fn(*args, **kwargs)
 
@@ -81,17 +82,17 @@ def never_calls(tool_name: str) -> Callable[..., Any]:
                         )
                 return result
 
-        return wrapper
+        return wrapper  # type: ignore[return-value]
 
     return decorator
 
 
-def requires_before(tool_a: str, tool_b: str) -> Callable[..., Any]:
+def requires_before(tool_a: str, tool_b: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Assert that tool_a must be called before tool_b."""
 
-    def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
+    def decorator(fn: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(fn)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             with decorator_scope():
                 result = fn(*args, **kwargs)
 
@@ -112,22 +113,21 @@ def requires_before(tool_a: str, tool_b: str) -> Callable[..., Any]:
                             )
                 return result
 
-        return wrapper
+        return wrapper  # type: ignore[return-value]
 
     return decorator
 
 
-def max_llm_calls(n: int) -> Callable[..., Any]:
+def max_llm_calls(n: int) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Assert that the agent makes at most n LLM calls.
 
     Sets a runtime limit so execution aborts immediately when exceeded.
     """
 
-    def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
+    def decorator(fn: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(fn)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            with decorator_scope():
-                set_pending_limits(max_llm_calls=n)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            with decorator_scope(max_llm_calls=n):
                 result = fn(*args, **kwargs)
 
                 # Post-mortem safety net — check ALL intercepts
@@ -141,22 +141,21 @@ def max_llm_calls(n: int) -> Callable[..., Any]:
                         )
                 return result
 
-        return wrapper
+        return wrapper  # type: ignore[return-value]
 
     return decorator
 
 
-def max_token_cost(max_tokens: int) -> Callable[..., Any]:
+def max_token_cost(max_tokens: int) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Assert that total token usage stays within budget.
 
     Sets a runtime limit so execution aborts immediately when exceeded.
     """
 
-    def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
+    def decorator(fn: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(fn)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            with decorator_scope():
-                set_pending_limits(max_tokens=max_tokens)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            with decorator_scope(max_tokens=max_tokens):
                 result = fn(*args, **kwargs)
 
                 # Post-mortem safety net — check ALL intercepts
@@ -173,20 +172,20 @@ def max_token_cost(max_tokens: int) -> Callable[..., Any]:
                         )
                 return result
 
-        return wrapper
+        return wrapper  # type: ignore[return-value]
 
     return decorator
 
 
-def output_matches_schema(schema: dict[str, Any]) -> Callable[..., Any]:
+def output_matches_schema(schema: dict[str, Any]) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Assert that the agent's output conforms to a JSON schema.
 
     Requires the 'json' optional dependency: pip install agenthesis[json]
     """
 
-    def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
+    def decorator(fn: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(fn)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             try:
                 import jsonschema
             except ImportError as e:
@@ -229,12 +228,12 @@ def output_matches_schema(schema: dict[str, Any]) -> Callable[..., Any]:
 
                 return result
 
-        return wrapper
+        return wrapper  # type: ignore[return-value]
 
     return decorator
 
 
-def output_matches_grammar(parser: Callable[[str], Any]) -> Callable[..., Any]:
+def output_matches_grammar(parser: Callable[[str], Any]) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Assert that the agent's output conforms to a grammar.
 
     Args:
@@ -242,9 +241,9 @@ def output_matches_grammar(parser: Callable[[str], Any]) -> Callable[..., Any]:
             Can be a lark parser, a custom function, etc.
     """
 
-    def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
+    def decorator(fn: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(fn)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             with decorator_scope():
                 result = fn(*args, **kwargs)
 
@@ -266,7 +265,7 @@ def output_matches_grammar(parser: Callable[[str], Any]) -> Callable[..., Any]:
 
                 return result
 
-        return wrapper
+        return wrapper  # type: ignore[return-value]
 
     return decorator
 

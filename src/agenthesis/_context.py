@@ -78,7 +78,7 @@ def get_current_intercept() -> Intercept:
 def set_pending_limits(**limits: int) -> None:
     """Store limits to be ingested by Intercept.__enter__.
 
-    Limits accumulate (multiple decorators can each add their own).
+    .. deprecated:: Use :func:`decorator_scope` with keyword arguments instead.
     """
     current = _pending_limits.get()
     if current is None:
@@ -121,20 +121,34 @@ def clear_test_state() -> None:
 
 
 @contextlib.contextmanager
-def decorator_scope() -> Generator[None, None, None]:
+def decorator_scope(**limits: int) -> Generator[None, None, None]:
     """Context manager for invariant decorator scope.
 
     Uses ContextVar tokens to ensure state is properly restored even
-    if the decorated test raises an exception. Only the outermost
-    decorator scope clears test state on exit.
+    if the decorated test raises an exception. Limits passed as keyword
+    arguments are merged with any existing pending limits and tracked
+    via token-based restoration, making this safe under concurrent or
+    async execution.
+
+    Only the outermost decorator scope clears recorded intercepts on exit.
     """
     depth_token = _decorator_depth.set(_decorator_depth.get() + 1)
+
+    # Merge incoming limits with any already pending, track via token
+    current = _pending_limits.get()
+    if limits:
+        new_limits = {**current, **limits} if current else dict(limits)
+    else:
+        new_limits = current
+    limits_token = _pending_limits.set(new_limits)
+
     try:
         yield
     finally:
+        _pending_limits.reset(limits_token)
         _decorator_depth.reset(depth_token)
         if _decorator_depth.get() == 0:
-            clear_test_state()
+            _test_intercepts.set(())
 
 
 def enter_decorator() -> None:

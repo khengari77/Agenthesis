@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from hypothesis import HealthCheck, settings
+from hypothesis.errors import InvalidArgument
 from hypothesis import given as _hypothesis_given
 
 if TYPE_CHECKING:
@@ -27,17 +28,19 @@ def given(*args: Any, **kwargs: Any) -> Callable[..., Any]:
     - deadline=None (agent calls are slow)
     - suppress too_slow health check
 
-    Users can override with @settings(...) on their test function.
+    Users can override with @settings(...) applied *outside* @ac.given,
+    which Hypothesis naturally treats as the winning configuration.
     Other Hypothesis tests in the same process are not affected.
     """
 
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
-        # Check if the function already has explicit @settings applied.
-        has_explicit_settings = hasattr(fn, "_hypothesis_internal_use_settings")
         wrapped = _hypothesis_given(*args, **kwargs)(fn)
-        # Only apply agent defaults if the user hasn't set custom settings.
-        if has_explicit_settings:
+        # Apply agent defaults only if the user hasn't already applied
+        # @settings. Hypothesis raises InvalidArgument on double-settings,
+        # which we catch to gracefully defer to the user's configuration.
+        try:
+            return _AGENT_SETTINGS(wrapped)
+        except InvalidArgument:
             return wrapped
-        return _AGENT_SETTINGS(wrapped)
 
     return decorator

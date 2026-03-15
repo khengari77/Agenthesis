@@ -141,11 +141,11 @@ class TestIntercept:
 
     def test_pending_limits_ingested_on_enter(self, agent: DummyAgent) -> None:
         """Verify that pending limits from decorators are ingested by __enter__."""
-        from agenthesis._context import set_pending_limits
+        from agenthesis._context import decorator_scope
 
-        set_pending_limits(max_steps=2)
-        with Intercept(agent) as ctx:
-            assert ctx._max_steps == 2
+        with decorator_scope(max_steps=2):
+            with Intercept(agent) as ctx:
+                assert ctx._max_steps == 2
 
     def test_async_wrapper_with_stub(self) -> None:
         """Verify that async tools get async wrappers and stubs work."""
