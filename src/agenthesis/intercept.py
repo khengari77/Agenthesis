@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+import threading
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -34,6 +35,7 @@ class ToolStub:
         self._value: Any = None
         self._sequence: list[Any] = []
         self._sequence_index: int = 0
+        self._lock = threading.Lock()
         self._fn: Callable[..., Any] | None = None
         self._exception: Exception | None = None
 
@@ -85,8 +87,9 @@ class ToolStub:
             if not self._sequence:
                 msg = "respond_sequence called with empty sequence"
                 raise InterceptError(msg)
-            value = self._sequence[self._sequence_index % len(self._sequence)]
-            self._sequence_index += 1
+            with self._lock:
+                value = self._sequence[self._sequence_index % len(self._sequence)]
+                self._sequence_index += 1
             return value
         # passthrough
         if self._original is not None:

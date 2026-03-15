@@ -6,7 +6,6 @@ import re
 from typing import TYPE_CHECKING, Any
 
 from agenthesis.report import report_failure, report_success
-from agenthesis.shrink import PromptShrinker
 from agenthesis.types import InvariantViolation
 
 if TYPE_CHECKING:
@@ -60,23 +59,8 @@ def pytest_exception_interact(
     if violation is None:
         return
 
-    shrunk_input = None
     prompt = _extract_failing_prompt(call.excinfo)
-    if prompt is not None and hasattr(node, "obj") and callable(node.obj):
-        try:
-
-            def test_fn(p: str) -> bool:
-                try:
-                    node.obj(p)
-                except Exception:
-                    return True
-                return False
-
-            shrunk_input = PromptShrinker(test_fn, max_iterations=20).shrink(prompt)
-        except Exception:
-            pass  # best-effort
-
-    report_failure(node.name, violation, shrunk_input=shrunk_input)
+    report_failure(node.name, violation, shrunk_input=prompt)
 
 
 def pytest_runtest_logreport(report: pytest.TestReport) -> None:

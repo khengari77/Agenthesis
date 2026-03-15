@@ -10,29 +10,34 @@ from hypothesis import given as _hypothesis_given
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-# Register and load an agent-friendly Hypothesis profile.
-# Tests without an explicit @settings get these defaults automatically.
-# Users can override per-test with @settings(...) or globally by loading
-# a different profile after importing agenthesis.
-settings.register_profile(
-    "agenthesis",
+# Agent-friendly Hypothesis settings applied per-function (not globally).
+_AGENT_SETTINGS = settings(
     max_examples=10,
     deadline=None,
     suppress_health_check=[HealthCheck.too_slow],
 )
-settings.load_profile("agenthesis")
 
 
 def given(*args: Any, **kwargs: Any) -> Callable[..., Any]:
     """Agenthesis's @given decorator.
 
-    Wraps hypothesis.given with agent-appropriate defaults loaded via
-    the 'agenthesis' Hypothesis profile:
+    Wraps hypothesis.given with agent-appropriate defaults applied
+    only to the decorated function:
     - max_examples=10 (agent calls are expensive)
     - deadline=None (agent calls are slow)
     - suppress too_slow health check
 
-    Users can override with @settings(...) on their test function,
-    or by loading a different Hypothesis profile after importing agenthesis.
+    Users can override with @settings(...) on their test function.
+    Other Hypothesis tests in the same process are not affected.
     """
-    return _hypothesis_given(*args, **kwargs)
+
+    def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
+        # Check if the function already has explicit @settings applied.
+        has_explicit_settings = hasattr(fn, "_hypothesis_internal_use_settings")
+        wrapped = _hypothesis_given(*args, **kwargs)(fn)
+        # Only apply agent defaults if the user hasn't set custom settings.
+        if has_explicit_settings:
+            return wrapped
+        return _AGENT_SETTINGS(wrapped)
+
+    return decorator

@@ -35,7 +35,7 @@ class AgentTrace:
 class AgentResult:
     """The outcome of running an agent."""
 
-    output: str
+    output: Any
     trace: AgentTrace = field(default_factory=AgentTrace)
     metadata: dict[str, Any] = field(default_factory=dict)
 

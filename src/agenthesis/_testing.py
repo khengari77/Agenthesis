@@ -142,7 +142,10 @@ class DummyAgent:
         if not all(c in allowed for c in expression):
             return {"result": "error", "expression": expression}
         try:
-            result = eval(expression, {"__builtins__": {}}, {})  # noqa: S307
+            # Safe: expression is pre-validated to only contain digits and
+            # arithmetic operators, and eval runs with no builtins or locals.
+            code = compile(expression, "<calc>", "eval")
+            result = eval(code, {"__builtins__": {}}, {})  # noqa: S307
         except Exception:
             result = "error"
         return {"result": result, "expression": expression}

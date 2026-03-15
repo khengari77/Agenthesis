@@ -8,7 +8,9 @@ reference, corrupting the stack.
 
 from __future__ import annotations
 
+import contextlib
 import contextvars
+from collections.abc import Generator
 from typing import TYPE_CHECKING
 
 from agenthesis.types import AgenthesisError
@@ -118,13 +120,36 @@ def clear_test_state() -> None:
     _test_intercepts.set(())
 
 
+@contextlib.contextmanager
+def decorator_scope() -> Generator[None, None, None]:
+    """Context manager for invariant decorator scope.
+
+    Uses ContextVar tokens to ensure state is properly restored even
+    if the decorated test raises an exception. Only the outermost
+    decorator scope clears test state on exit.
+    """
+    depth_token = _decorator_depth.set(_decorator_depth.get() + 1)
+    try:
+        yield
+    finally:
+        _decorator_depth.reset(depth_token)
+        if _decorator_depth.get() == 0:
+            clear_test_state()
+
+
 def enter_decorator() -> None:
-    """Increment decorator depth. Called at the start of each invariant decorator."""
+    """Increment decorator depth. Called at the start of each invariant decorator.
+
+    .. deprecated:: Use :func:`decorator_scope` context manager instead.
+    """
     _decorator_depth.set(_decorator_depth.get() + 1)
 
 
 def exit_decorator() -> None:
-    """Decrement decorator depth. Only the outermost decorator clears test state."""
+    """Decrement decorator depth. Only the outermost decorator clears test state.
+
+    .. deprecated:: Use :func:`decorator_scope` context manager instead.
+    """
     depth = _decorator_depth.get() - 1
     _decorator_depth.set(depth)
     if depth == 0:

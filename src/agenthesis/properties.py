@@ -8,8 +8,7 @@ import re
 from typing import TYPE_CHECKING, Any
 
 from agenthesis._context import (
-    enter_decorator,
-    exit_decorator,
+    decorator_scope,
     get_all_test_intercepts,
     set_pending_limits,
 )
@@ -39,9 +38,8 @@ def max_steps(n: int) -> Callable[..., Any]:
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            enter_decorator()
-            set_pending_limits(max_steps=n)
-            try:
+            with decorator_scope():
+                set_pending_limits(max_steps=n)
                 result = fn(*args, **kwargs)
 
                 # Post-mortem safety net — check ALL intercepts
@@ -54,8 +52,6 @@ def max_steps(n: int) -> Callable[..., Any]:
                             trace=trace,
                         )
                 return result
-            finally:
-                exit_decorator()
 
         return wrapper
 
@@ -68,8 +64,7 @@ def never_calls(tool_name: str) -> Callable[..., Any]:
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            enter_decorator()
-            try:
+            with decorator_scope():
                 result = fn(*args, **kwargs)
 
                 for ctx in get_all_test_intercepts():
@@ -85,8 +80,6 @@ def never_calls(tool_name: str) -> Callable[..., Any]:
                             trace=trace,
                         )
                 return result
-            finally:
-                exit_decorator()
 
         return wrapper
 
@@ -99,8 +92,7 @@ def requires_before(tool_a: str, tool_b: str) -> Callable[..., Any]:
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            enter_decorator()
-            try:
+            with decorator_scope():
                 result = fn(*args, **kwargs)
 
                 for ctx in get_all_test_intercepts():
@@ -119,8 +111,6 @@ def requires_before(tool_a: str, tool_b: str) -> Callable[..., Any]:
                                 trace=trace,
                             )
                 return result
-            finally:
-                exit_decorator()
 
         return wrapper
 
@@ -136,9 +126,8 @@ def max_llm_calls(n: int) -> Callable[..., Any]:
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            enter_decorator()
-            set_pending_limits(max_llm_calls=n)
-            try:
+            with decorator_scope():
+                set_pending_limits(max_llm_calls=n)
                 result = fn(*args, **kwargs)
 
                 # Post-mortem safety net — check ALL intercepts
@@ -151,8 +140,6 @@ def max_llm_calls(n: int) -> Callable[..., Any]:
                             trace=trace,
                         )
                 return result
-            finally:
-                exit_decorator()
 
         return wrapper
 
@@ -168,9 +155,8 @@ def max_token_cost(max_tokens: int) -> Callable[..., Any]:
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            enter_decorator()
-            set_pending_limits(max_tokens=max_tokens)
-            try:
+            with decorator_scope():
+                set_pending_limits(max_tokens=max_tokens)
                 result = fn(*args, **kwargs)
 
                 # Post-mortem safety net — check ALL intercepts
@@ -186,8 +172,6 @@ def max_token_cost(max_tokens: int) -> Callable[..., Any]:
                             trace=trace,
                         )
                 return result
-            finally:
-                exit_decorator()
 
         return wrapper
 
@@ -212,8 +196,7 @@ def output_matches_schema(schema: dict[str, Any]) -> Callable[..., Any]:
                 )
                 raise ImportError(msg) from e
 
-            enter_decorator()
-            try:
+            with decorator_scope():
                 result = fn(*args, **kwargs)
 
                 # The result should be an AgentResult or have an 'output' attribute
@@ -245,8 +228,6 @@ def output_matches_schema(schema: dict[str, Any]) -> Callable[..., Any]:
                     ) from e
 
                 return result
-            finally:
-                exit_decorator()
 
         return wrapper
 
@@ -264,8 +245,7 @@ def output_matches_grammar(parser: Callable[[str], Any]) -> Callable[..., Any]:
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            enter_decorator()
-            try:
+            with decorator_scope():
                 result = fn(*args, **kwargs)
 
                 output = result.output if hasattr(result, "output") else result
@@ -285,8 +265,6 @@ def output_matches_grammar(parser: Callable[[str], Any]) -> Callable[..., Any]:
                     ) from e
 
                 return result
-            finally:
-                exit_decorator()
 
         return wrapper
 
