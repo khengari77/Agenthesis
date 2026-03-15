@@ -11,10 +11,10 @@ from __future__ import annotations
 import contextvars
 from typing import TYPE_CHECKING
 
-from agentcheck.types import AgentCheckError
+from agenthesis.types import AgenthesisError
 
 if TYPE_CHECKING:
-    from agentcheck.intercept import Intercept
+    from agenthesis.intercept import Intercept
 
 _context_stack: contextvars.ContextVar[tuple[Intercept, ...]] = contextvars.ContextVar(
     "_context_stack", default=()
@@ -48,7 +48,7 @@ def pop_context() -> Intercept:
     stack = _context_stack.get()
     if not stack:
         msg = "No active Intercept context to pop"
-        raise AgentCheckError(msg)
+        raise AgenthesisError(msg)
     ctx = stack[-1]
     _context_stack.set(stack[:-1])
     _context_last.set(ctx)
@@ -70,7 +70,7 @@ def get_current_intercept() -> Intercept:
         return last
 
     msg = "No active Intercept context. Use 'with Intercept(agent) as ctx:' first."
-    raise AgentCheckError(msg)
+    raise AgenthesisError(msg)
 
 
 def set_pending_limits(**limits: int) -> None:

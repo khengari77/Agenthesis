@@ -18,8 +18,8 @@ pytestmark = pytest.mark.skipif(not HAS_LANGCHAIN, reason="langchain-core not in
 
 class TestLangChainAgentAdapter:
     def test_run_returns_agent_result(self) -> None:
-        from agentcheck.integrations.langchain.adapter import LangChainAgentAdapter
-        from agentcheck.types import AgentResult
+        from agenthesis.integrations.langchain.adapter import LangChainAgentAdapter
+        from agenthesis.types import AgentResult
 
         mock_agent = MagicMock()
         mock_agent.invoke.return_value = {"output": "hello world"}
@@ -33,7 +33,7 @@ class TestLangChainAgentAdapter:
         mock_agent.invoke.assert_called_once()
 
     def test_run_builds_trace_from_callback(self) -> None:
-        from agentcheck.integrations.langchain.adapter import LangChainAgentAdapter
+        from agenthesis.integrations.langchain.adapter import LangChainAgentAdapter
 
         mock_agent = MagicMock()
         mock_agent.invoke.return_value = {"output": "done"}
@@ -47,7 +47,7 @@ class TestLangChainAgentAdapter:
         assert result.trace.total_tokens == 0
 
     def test_tools_property_proxies(self) -> None:
-        from agentcheck.integrations.langchain.adapter import LangChainAgentAdapter
+        from agenthesis.integrations.langchain.adapter import LangChainAgentAdapter
 
         sentinel = [MagicMock(), MagicMock()]
         mock_agent = MagicMock()
@@ -57,30 +57,30 @@ class TestLangChainAgentAdapter:
         assert adapter.tools is sentinel
 
     def test_extract_output_dict(self) -> None:
-        from agentcheck.integrations.langchain.adapter import LangChainAgentAdapter
+        from agenthesis.integrations.langchain.adapter import LangChainAgentAdapter
 
         assert LangChainAgentAdapter._extract_output({"output": "hi"}) == "hi"
 
     def test_extract_output_string(self) -> None:
-        from agentcheck.integrations.langchain.adapter import LangChainAgentAdapter
+        from agenthesis.integrations.langchain.adapter import LangChainAgentAdapter
 
         assert LangChainAgentAdapter._extract_output("plain") == "plain"
 
     def test_extract_output_message(self) -> None:
-        from agentcheck.integrations.langchain.adapter import LangChainAgentAdapter
+        from agenthesis.integrations.langchain.adapter import LangChainAgentAdapter
 
         msg = MagicMock()
         msg.content = "from message"
         assert LangChainAgentAdapter._extract_output(msg) == "from message"
 
     def test_extract_output_missing_key_raises(self) -> None:
-        from agentcheck.integrations.langchain.adapter import LangChainAgentAdapter
+        from agenthesis.integrations.langchain.adapter import LangChainAgentAdapter
 
         with pytest.raises(KeyError, match="Expected 'output' key"):
             LangChainAgentAdapter._extract_output({"result": "oops"})
 
     def test_custom_input_key(self) -> None:
-        from agentcheck.integrations.langchain.adapter import LangChainAgentAdapter
+        from agenthesis.integrations.langchain.adapter import LangChainAgentAdapter
 
         mock_agent = MagicMock()
         mock_agent.invoke.return_value = {"output": "done"}

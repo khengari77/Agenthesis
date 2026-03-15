@@ -30,7 +30,7 @@ class _FakeAgent:
 
 class TestLangChainResolver:
     def test_resolve_discovers_base_tools(self) -> None:
-        from agentcheck.integrations.langchain.resolver import LangChainResolver
+        from agenthesis.integrations.langchain.resolver import LangChainResolver
 
         t1 = _make_tool("search", lambda q="": f"found: {q}")
         t2 = _make_tool("calc", lambda x=0: x * 2)
@@ -42,7 +42,7 @@ class TestLangChainResolver:
         assert "calc" in tools
 
     def test_resolve_explicit_tools(self) -> None:
-        from agentcheck.integrations.langchain.resolver import LangChainResolver
+        from agenthesis.integrations.langchain.resolver import LangChainResolver
 
         resolver = LangChainResolver()
         explicit = {"my_tool": lambda: 42}
@@ -50,7 +50,7 @@ class TestLangChainResolver:
         assert tools["my_tool"]() == 42
 
     def test_install_patches_run(self) -> None:
-        from agentcheck.integrations.langchain.resolver import LangChainResolver
+        from agenthesis.integrations.langchain.resolver import LangChainResolver
 
         t = _make_tool("search", lambda q="": f"found: {q}")
         resolver = LangChainResolver(lc_tools=[t])
@@ -68,8 +68,8 @@ class TestLangChainResolver:
         assert t._run is original_run
 
     def test_intercept_with_langchain_resolver(self) -> None:
-        from agentcheck.integrations.langchain.resolver import LangChainResolver
-        from agentcheck.intercept import Intercept
+        from agenthesis.integrations.langchain.resolver import LangChainResolver
+        from agenthesis.intercept import Intercept
 
         t = _make_tool("search", lambda q="": f"found: {q}")
         resolver = LangChainResolver(lc_tools=[t])

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from agentcheck.types import (
-    AgentCheckError,
+from agenthesis.types import (
+    AgenthesisError,
     AgentResult,
     AgentTrace,
     InterceptError,
@@ -72,5 +72,5 @@ class TestExceptions:
         assert v.invariant == "max_steps"
 
     def test_hierarchy(self) -> None:
-        assert issubclass(InvariantViolation, AgentCheckError)
-        assert issubclass(InterceptError, AgentCheckError)
+        assert issubclass(InvariantViolation, AgenthesisError)
+        assert issubclass(InterceptError, AgenthesisError)

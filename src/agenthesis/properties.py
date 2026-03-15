@@ -7,13 +7,13 @@ import json
 import re
 from typing import TYPE_CHECKING, Any
 
-from agentcheck._context import (
+from agenthesis._context import (
     enter_decorator,
     exit_decorator,
     get_all_test_intercepts,
     set_pending_limits,
 )
-from agentcheck.types import InvariantViolation
+from agenthesis.types import InvariantViolation
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -197,7 +197,7 @@ def max_token_cost(max_tokens: int) -> Callable[..., Any]:
 def output_matches_schema(schema: dict[str, Any]) -> Callable[..., Any]:
     """Assert that the agent's output conforms to a JSON schema.
 
-    Requires the 'json' optional dependency: pip install agentcheck[json]
+    Requires the 'json' optional dependency: pip install agenthesis[json]
     """
 
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
@@ -208,7 +208,7 @@ def output_matches_schema(schema: dict[str, Any]) -> Callable[..., Any]:
             except ImportError as e:
                 msg = (
                     "jsonschema is required for output_matches_schema. "
-                    "Install with: pip install agentcheck[json]"
+                    "Install with: pip install agenthesis[json]"
                 )
                 raise ImportError(msg) from e
 
@@ -296,14 +296,14 @@ def output_matches_grammar(parser: Callable[[str], Any]) -> Callable[..., Any]:
 def lark_grammar(grammar_str: str, start: str = "start") -> Callable[[str], Any]:
     """Create a parser from a Lark grammar string.
 
-    Requires the 'grammar' optional dependency: pip install agentcheck[grammar]
+    Requires the 'grammar' optional dependency: pip install agenthesis[grammar]
     """
     try:
         from lark import Lark
     except ImportError as e:
         msg = (
             "lark is required for lark_grammar. "
-            "Install with: pip install agentcheck[grammar]"
+            "Install with: pip install agenthesis[grammar]"
         )
         raise ImportError(msg) from e
 

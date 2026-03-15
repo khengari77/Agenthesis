@@ -1,4 +1,4 @@
-"""LangChain callback handler for AgentCheck instrumentation."""
+"""LangChain callback handler for Agenthesis instrumentation."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING, Any
 
 from langchain_core.callbacks import BaseCallbackHandler
 
-from agentcheck._context import get_current_intercept
-from agentcheck.types import AgentCheckError, ToolCall
+from agenthesis._context import get_current_intercept
+from agenthesis.types import AgenthesisError, ToolCall
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from langchain_core.outputs import LLMResult
 
 
-class AgentCheckCallbackHandler(BaseCallbackHandler):
+class AgenthesisCallbackHandler(BaseCallbackHandler):
     """LangChain callback handler that records events into the active Intercept context."""
 
     def __init__(self) -> None:
@@ -29,7 +29,7 @@ class AgentCheckCallbackHandler(BaseCallbackHandler):
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
         try:
             ctx = get_current_intercept()
-        except AgentCheckError:
+        except AgenthesisError:
             return  # No active context
 
         total_tokens = 0
@@ -52,7 +52,7 @@ class AgentCheckCallbackHandler(BaseCallbackHandler):
     ) -> None:
         try:
             ctx = get_current_intercept()
-        except AgentCheckError:
+        except AgenthesisError:
             return  # No active context
 
         run_id = kwargs.get("run_id")
@@ -71,7 +71,7 @@ class AgentCheckCallbackHandler(BaseCallbackHandler):
     def on_tool_end(self, output: str, **kwargs: Any) -> None:
         try:
             ctx = get_current_intercept()
-        except AgentCheckError:
+        except AgenthesisError:
             return
 
         run_id = kwargs.get("run_id")

@@ -6,11 +6,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from agentcheck.intercept import Intercept
-from agentcheck.types import InterceptError, InvariantViolation
+from agenthesis.intercept import Intercept
+from agenthesis.types import InterceptError, InvariantViolation
 
 if TYPE_CHECKING:
-    from agentcheck._testing import DummyAgent
+    from agenthesis._testing import DummyAgent
 
 
 class TestIntercept:
@@ -141,7 +141,7 @@ class TestIntercept:
 
     def test_pending_limits_ingested_on_enter(self, agent: DummyAgent) -> None:
         """Verify that pending limits from decorators are ingested by __enter__."""
-        from agentcheck._context import set_pending_limits
+        from agenthesis._context import set_pending_limits
 
         set_pending_limits(max_steps=2)
         with Intercept(agent) as ctx:

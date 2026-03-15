@@ -1,13 +1,13 @@
-"""Pytest plugin for AgentCheck — wires up Rich reporting on test outcomes."""
+"""Pytest plugin for Agenthesis — wires up Rich reporting on test outcomes."""
 
 from __future__ import annotations
 
 import re
 from typing import TYPE_CHECKING, Any
 
-from agentcheck.report import report_failure, report_success
-from agentcheck.shrink import PromptShrinker
-from agentcheck.types import InvariantViolation
+from agenthesis.report import report_failure, report_success
+from agenthesis.shrink import PromptShrinker
+from agenthesis.types import InvariantViolation
 
 if TYPE_CHECKING:
     import pytest

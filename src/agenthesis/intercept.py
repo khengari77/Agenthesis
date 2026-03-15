@@ -6,13 +6,13 @@ import inspect
 import time
 from typing import TYPE_CHECKING, Any
 
-from agentcheck._context import (
+from agenthesis._context import (
     pop_context,
     push_context,
     read_pending_limits,
     record_test_intercept,
 )
-from agentcheck.types import (
+from agenthesis.types import (
     AgentTrace,
     InterceptError,
     InvariantViolation,

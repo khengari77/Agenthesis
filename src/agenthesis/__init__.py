@@ -1,11 +1,11 @@
-"""AgentCheck: Property-based testing for AI agents."""
+"""Agenthesis: Property-based testing for AI agents."""
 
 __version__ = "0.1.0"
 
-from agentcheck import strategies as st
-from agentcheck._given import given
-from agentcheck.intercept import DefaultResolver, Intercept
-from agentcheck.properties import (
+from agenthesis import strategies as st
+from agenthesis._given import given
+from agenthesis.intercept import DefaultResolver, Intercept
+from agenthesis.properties import (
     lark_grammar,
     max_llm_calls,
     max_steps,
@@ -15,9 +15,9 @@ from agentcheck.properties import (
     output_matches_schema,
     requires_before,
 )
-from agentcheck.shrink import PromptShrinker, SequenceShrinker
-from agentcheck.types import (
-    AgentCheckError,
+from agenthesis.shrink import PromptShrinker, SequenceShrinker
+from agenthesis.types import (
+    AgenthesisError,
     AgentProtocol,
     AgentResult,
     AgentTrace,
@@ -29,7 +29,7 @@ from agentcheck.types import (
 )
 
 __all__ = [
-    "AgentCheckError",
+    "AgenthesisError",
     "AgentProtocol",
     "DefaultResolver",
     "AgentResult",

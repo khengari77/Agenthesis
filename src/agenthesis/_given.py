@@ -13,26 +13,26 @@ if TYPE_CHECKING:
 # Register and load an agent-friendly Hypothesis profile.
 # Tests without an explicit @settings get these defaults automatically.
 # Users can override per-test with @settings(...) or globally by loading
-# a different profile after importing agentcheck.
+# a different profile after importing agenthesis.
 settings.register_profile(
-    "agentcheck",
+    "agenthesis",
     max_examples=10,
     deadline=None,
     suppress_health_check=[HealthCheck.too_slow],
 )
-settings.load_profile("agentcheck")
+settings.load_profile("agenthesis")
 
 
 def given(*args: Any, **kwargs: Any) -> Callable[..., Any]:
-    """AgentCheck's @given decorator.
+    """Agenthesis's @given decorator.
 
     Wraps hypothesis.given with agent-appropriate defaults loaded via
-    the 'agentcheck' Hypothesis profile:
+    the 'agenthesis' Hypothesis profile:
     - max_examples=10 (agent calls are expensive)
     - deadline=None (agent calls are slow)
     - suppress too_slow health check
 
     Users can override with @settings(...) on their test function,
-    or by loading a different Hypothesis profile after importing agentcheck.
+    or by loading a different Hypothesis profile after importing agenthesis.
     """
     return _hypothesis_given(*args, **kwargs)

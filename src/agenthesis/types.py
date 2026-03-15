@@ -1,4 +1,4 @@
-"""Core types for AgentCheck."""
+"""Core types for Agenthesis."""
 
 from __future__ import annotations
 
@@ -92,11 +92,11 @@ class AgentProtocol(Protocol):
     def run(self, prompt: str) -> AgentResult: ...
 
 
-class AgentCheckError(Exception):
-    """Base exception for AgentCheck."""
+class AgenthesisError(Exception):
+    """Base exception for Agenthesis."""
 
 
-class InvariantViolation(AgentCheckError):  # noqa: N818
+class InvariantViolation(AgenthesisError):  # noqa: N818
     """Raised when an agent violates a declared invariant."""
 
     def __init__(self, invariant: str, message: str, trace: AgentTrace | None = None) -> None:
@@ -105,5 +105,5 @@ class InvariantViolation(AgentCheckError):  # noqa: N818
         super().__init__(f"[{invariant}] {message}")
 
 
-class InterceptError(AgentCheckError):
+class InterceptError(AgenthesisError):
     """Raised when tool interception fails."""

@@ -5,10 +5,10 @@ from __future__ import annotations
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-import agentcheck as ac
-from agentcheck._testing import DummyAgent
-from agentcheck.intercept import Intercept
-from agentcheck.shrink import PromptShrinker
+import agenthesis as ac
+from agenthesis._testing import DummyAgent
+from agenthesis.intercept import Intercept
+from agenthesis.shrink import PromptShrinker
 
 
 class TestEndToEnd:
@@ -109,7 +109,7 @@ class TestPromptShrinker:
         assert len(shrinker.history) > 0
 
 
-class TestAgentCheckGiven:
+class TestAgenthesisGiven:
     """Test the ac.given wrapper."""
 
     @ac.given(prompt=st.text(max_size=50))

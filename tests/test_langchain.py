@@ -18,14 +18,14 @@ pytestmark = pytest.mark.skipif(not HAS_LANGCHAIN, reason="langchain-core not in
 
 @pytest.fixture
 def handler():
-    from agentcheck.integrations.langchain import AgentCheckCallbackHandler
+    from agenthesis.integrations.langchain import AgenthesisCallbackHandler
 
-    return AgentCheckCallbackHandler()
+    return AgenthesisCallbackHandler()
 
 
-class TestAgentCheckCallbackHandler:
+class TestAgenthesisCallbackHandler:
     def test_callback_records_llm_call(self, handler, agent) -> None:
-        from agentcheck.intercept import Intercept
+        from agenthesis.intercept import Intercept
 
         response = LLMResult(
             generations=[],
@@ -44,7 +44,7 @@ class TestAgentCheckCallbackHandler:
         handler.on_llm_end(response)
 
     def test_on_tool_start_records_step(self, handler, agent) -> None:
-        from agentcheck.intercept import Intercept
+        from agenthesis.intercept import Intercept
 
         with Intercept(agent) as ctx:
             handler.on_tool_start(serialized={}, input_str="test")
@@ -52,8 +52,8 @@ class TestAgentCheckCallbackHandler:
         assert ctx.trace.steps == 1
 
     def test_invariant_violation_propagates_on_llm_end(self, handler, agent) -> None:
-        from agentcheck.intercept import Intercept
-        from agentcheck.types import InvariantViolation
+        from agenthesis.intercept import Intercept
+        from agenthesis.types import InvariantViolation
 
         response = LLMResult(
             generations=[],
@@ -66,8 +66,8 @@ class TestAgentCheckCallbackHandler:
             handler.on_llm_end(response)  # call 2: exceeds limit
 
     def test_invariant_violation_propagates_on_tool_start(self, handler, agent) -> None:
-        from agentcheck.intercept import Intercept
-        from agentcheck.types import InvariantViolation
+        from agenthesis.intercept import Intercept
+        from agenthesis.types import InvariantViolation
 
         with pytest.raises(InvariantViolation, match="max_steps"), Intercept(agent) as ctx:
             ctx.set_step_limit(1)
@@ -75,7 +75,7 @@ class TestAgentCheckCallbackHandler:
             handler.on_tool_start(serialized={}, input_str="b")  # step 2: exceeds
 
     def test_handler_reset_clears_state(self, handler, agent) -> None:
-        from agentcheck.intercept import Intercept
+        from agenthesis.intercept import Intercept
 
         response = LLMResult(
             generations=[],
@@ -92,7 +92,7 @@ class TestAgentCheckCallbackHandler:
         assert handler.get_trace()["tool_calls"] == 0
 
     def test_on_tool_end_records_tool_call(self, handler, agent) -> None:
-        from agentcheck.intercept import Intercept
+        from agenthesis.intercept import Intercept
 
         run_id = uuid4()
 
@@ -107,7 +107,7 @@ class TestAgentCheckCallbackHandler:
         assert ctx.calls[0].result == "result data"
 
     def test_on_tool_error_cleans_pending(self, handler, agent) -> None:
-        from agentcheck.intercept import Intercept
+        from agenthesis.intercept import Intercept
 
         run_id = uuid4()
 
@@ -120,7 +120,7 @@ class TestAgentCheckCallbackHandler:
             assert run_id not in handler._pending_tools
 
     def test_on_tool_end_without_matching_start(self, handler, agent) -> None:
-        from agentcheck.intercept import Intercept
+        from agenthesis.intercept import Intercept
 
         with Intercept(agent) as ctx:
             handler.on_tool_end("result", run_id=uuid4())

@@ -1,11 +1,11 @@
-"""LangChain agent adapter for AgentCheck."""
+"""LangChain agent adapter for Agenthesis."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from agentcheck.integrations.langchain.callback import AgentCheckCallbackHandler
-from agentcheck.types import AgentResult, AgentTrace
+from agenthesis.integrations.langchain.callback import AgenthesisCallbackHandler
+from agenthesis.types import AgentResult, AgentTrace
 
 
 class LangChainAgentAdapter:
@@ -14,7 +14,7 @@ class LangChainAgentAdapter:
     def __init__(self, agent: Any, *, input_key: str = "input") -> None:
         self._agent = agent
         self._input_key = input_key
-        self._handler = AgentCheckCallbackHandler()
+        self._handler = AgenthesisCallbackHandler()
 
     @property
     def tools(self) -> list[Any]:

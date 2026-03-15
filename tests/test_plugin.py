@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from agentcheck.plugin import _extract_failing_prompt
+from agenthesis.plugin import _extract_failing_prompt
 
 
 class TestExtractFailingPrompt:
@@ -62,7 +62,7 @@ class TestExtractFailingPrompt:
 class TestAutoShrinkIntegration:
     def test_auto_shrink_produces_shorter_input(self) -> None:
         """Verify auto-shrinking produces a result no longer than the original."""
-        from agentcheck.shrink import PromptShrinker
+        from agenthesis.shrink import PromptShrinker
 
         def test_fn(p: str) -> bool:
             return "fail" in p

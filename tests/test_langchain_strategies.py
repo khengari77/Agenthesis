@@ -18,7 +18,7 @@ class TestAdversarialMessages:
     def test_structure(self) -> None:
         from hypothesis import given, settings
 
-        from agentcheck.integrations.langchain.strategies import adversarial_messages
+        from agenthesis.integrations.langchain.strategies import adversarial_messages
 
         @given(msg=adversarial_messages())
         @settings(max_examples=20)
@@ -36,7 +36,7 @@ class TestToolCallMessages:
     def test_structure(self) -> None:
         from hypothesis import given, settings
 
-        from agentcheck.integrations.langchain.strategies import tool_call_messages
+        from agenthesis.integrations.langchain.strategies import tool_call_messages
 
         @given(call=tool_call_messages())
         @settings(max_examples=20)

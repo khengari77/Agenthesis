@@ -1,4 +1,4 @@
-"""Rich terminal reporting for AgentCheck test results."""
+"""Rich terminal reporting for Agenthesis test results."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from rich.table import Table
 from rich.text import Text
 
 if TYPE_CHECKING:
-    from agentcheck.types import InvariantViolation
+    from agenthesis.types import InvariantViolation
 
 console = Console(stderr=True, force_terminal=True)
 

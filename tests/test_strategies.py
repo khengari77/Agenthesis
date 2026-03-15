@@ -1,10 +1,10 @@
-"""Tests for AgentCheck strategies."""
+"""Tests for Agenthesis strategies."""
 
 from __future__ import annotations
 
 from hypothesis import given, settings
 
-from agentcheck.strategies import (
+from agenthesis.strategies import (
     adversarial_prompts,
     http_errors,
     malformed_json,

@@ -1,18 +1,18 @@
-"""Dummy agent for dogfooding AgentCheck."""
+"""Dummy agent for dogfooding Agenthesis."""
 
 from __future__ import annotations
 
 import time
 from typing import TYPE_CHECKING, Any
 
-from agentcheck.types import AgentResult, AgentTrace, ToolCall
+from agenthesis.types import AgentResult, AgentTrace, ToolCall
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 
 class DummyAgent:
-    """A deterministic test agent for dogfooding AgentCheck.
+    """A deterministic test agent for dogfooding Agenthesis.
 
     Has three built-in tools: calculator, search, weather.
     Parses the prompt for keywords to decide which tools to call.

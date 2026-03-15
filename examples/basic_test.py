@@ -1,8 +1,8 @@
-"""Basic AgentCheck example: testing a support agent for robustness."""
+"""Basic Agenthesis example: testing a support agent for robustness."""
 
-import agentcheck as ac
-from agentcheck._testing import DummyAgent
-from agentcheck.intercept import Intercept
+import agenthesis as ac
+from agenthesis._testing import DummyAgent
+from agenthesis.intercept import Intercept
 
 # --- Example 1: Basic property test with adversarial prompts ---
 
@@ -63,7 +63,7 @@ def test_agent_handles_server_errors(error):
 
 def demo_shrinker():
     """Demonstrate prompt shrinking to find minimal failing input."""
-    from agentcheck.shrink import PromptShrinker
+    from agenthesis.shrink import PromptShrinker
 
     def causes_failure(prompt: str) -> bool:
         """Simulate: agent fails when prompt contains 'DROP TABLE'."""
@@ -79,7 +79,7 @@ def demo_shrinker():
 
 
 if __name__ == "__main__":
-    print("=== Running AgentCheck Examples ===\n")
+    print("=== Running Agenthesis Examples ===\n")
 
     print("1. Adversarial prompts...")
     test_agent_survives_adversarial_prompts()

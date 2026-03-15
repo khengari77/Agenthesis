@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from agentcheck.intercept import DefaultResolver, Intercept
+from agenthesis.intercept import DefaultResolver, Intercept
 
 
 class _ToolKitAgent:

@@ -6,18 +6,18 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from agentcheck.intercept import Intercept
-from agentcheck.properties import (
+from agenthesis.intercept import Intercept
+from agenthesis.properties import (
     max_llm_calls,
     max_steps,
     max_token_cost,
     never_calls,
     requires_before,
 )
-from agentcheck.types import InvariantViolation
+from agenthesis.types import InvariantViolation
 
 if TYPE_CHECKING:
-    from agentcheck._testing import DummyAgent
+    from agenthesis._testing import DummyAgent
 
 
 def _has_lark() -> bool:
@@ -69,7 +69,7 @@ class TestMaxSteps:
 
     def test_multi_agent_limits_apply_to_all(self, agent: DummyAgent) -> None:
         """Verify that pending limits apply to all Intercept contexts in the same test."""
-        from agentcheck._testing import DummyAgent
+        from agenthesis._testing import DummyAgent
 
         agent_b = DummyAgent()
 
@@ -182,7 +182,7 @@ class TestMaxTokenCost:
 class TestMultiAgentNeverCalls:
     def test_catches_violation_in_first_agent(self, agent: DummyAgent) -> None:
         """Violation in first agent caught even when second agent is clean."""
-        from agentcheck._testing import DummyAgent as DummyAgentFactory
+        from agenthesis._testing import DummyAgent as DummyAgentFactory
 
         agent_b = DummyAgentFactory()
 
@@ -224,7 +224,7 @@ class TestStackedDecorators:
 
     def test_stacked_multi_agent(self, agent: DummyAgent) -> None:
         """Stacked decorators + multi-agent: outer sees all intercepts."""
-        from agentcheck._testing import DummyAgent as DummyAgentFactory
+        from agenthesis._testing import DummyAgent as DummyAgentFactory
 
         agent_b = DummyAgentFactory()
 
@@ -243,7 +243,7 @@ class TestStackedDecorators:
 class TestMultiAgentRequiresBefore:
     def test_catches_order_violation_in_earlier_agent(self, agent: DummyAgent) -> None:
         """Ordering violation in first agent caught even when second is clean."""
-        from agentcheck._testing import DummyAgent as DummyAgentFactory
+        from agenthesis._testing import DummyAgent as DummyAgentFactory
 
         agent_b = DummyAgentFactory()
 
@@ -260,7 +260,7 @@ class TestMultiAgentRequiresBefore:
 
 class TestMarkdownJsonStripping:
     def test_json_with_fence(self) -> None:
-        from agentcheck.properties import output_matches_schema
+        from agenthesis.properties import output_matches_schema
 
         schema = {"type": "object", "properties": {"key": {"type": "string"}}}
 
@@ -271,7 +271,7 @@ class TestMarkdownJsonStripping:
         run_test()
 
     def test_json_with_bare_fence(self) -> None:
-        from agentcheck.properties import output_matches_schema
+        from agenthesis.properties import output_matches_schema
 
         schema = {"type": "object", "properties": {"key": {"type": "string"}}}
 
@@ -282,7 +282,7 @@ class TestMarkdownJsonStripping:
         run_test()
 
     def test_plain_json_still_works(self) -> None:
-        from agentcheck.properties import output_matches_schema
+        from agenthesis.properties import output_matches_schema
 
         schema = {"type": "object", "properties": {"key": {"type": "string"}}}
 
@@ -293,7 +293,7 @@ class TestMarkdownJsonStripping:
         run_test()
 
     def test_invalid_json_in_fence_still_fails(self) -> None:
-        from agentcheck.properties import output_matches_schema
+        from agenthesis.properties import output_matches_schema
 
         schema = {"type": "object"}
 
@@ -307,7 +307,7 @@ class TestMarkdownJsonStripping:
 
 class TestOutputMatchesGrammar:
     def test_callable_parser_passes(self) -> None:
-        from agentcheck.properties import output_matches_grammar
+        from agenthesis.properties import output_matches_grammar
 
         def my_parser(text: str) -> None:
             if not text.startswith("OK"):
@@ -320,7 +320,7 @@ class TestOutputMatchesGrammar:
         run_test()
 
     def test_callable_parser_fails(self) -> None:
-        from agentcheck.properties import output_matches_grammar
+        from agenthesis.properties import output_matches_grammar
 
         def my_parser(text: str) -> None:
             if not text.startswith("OK"):
@@ -335,7 +335,7 @@ class TestOutputMatchesGrammar:
 
     @pytest.mark.skipif(not _has_lark(), reason="lark not installed")
     def test_lark_grammar_passes(self) -> None:
-        from agentcheck.properties import lark_grammar, output_matches_grammar
+        from agenthesis.properties import lark_grammar, output_matches_grammar
 
         parser = lark_grammar(
             '''
@@ -355,7 +355,7 @@ class TestOutputMatchesGrammar:
 
     @pytest.mark.skipif(not _has_lark(), reason="lark not installed")
     def test_lark_grammar_fails(self) -> None:
-        from agentcheck.properties import lark_grammar, output_matches_grammar
+        from agenthesis.properties import lark_grammar, output_matches_grammar
 
         parser = lark_grammar(
             '''

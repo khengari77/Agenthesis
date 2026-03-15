@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agentcheck.integrations.dspy import InvariantMetric
+from agenthesis.integrations.dspy import InvariantMetric
 
 
 class _Example:

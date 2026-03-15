@@ -1,21 +1,21 @@
-# AgentCheck
+# Agenthesis
 
-Property-based testing framework for AI agents. AgentCheck combines [Hypothesis](https://hypothesis.readthedocs.io/) with tool interception, behavioral invariants, and semantic shrinking to find edge cases in agent behavior.
+Property-based testing framework for AI agents. Agenthesis combines [Hypothesis](https://hypothesis.readthedocs.io/) with tool interception, behavioral invariants, and semantic shrinking to find edge cases in agent behavior.
 
 ## Installation
 
 ```bash
-pip install agentcheck
+pip install agenthesis
 
 # For JSON schema validation support
-pip install agentcheck[json]
+pip install agenthesis[json]
 ```
 
 ## Quick Start
 
 ```python
-import agentcheck as ac
-from agentcheck import Intercept
+import agenthesis as ac
+from agenthesis import Intercept
 
 @ac.max_steps(5)
 @ac.never_calls("execute_refund")
@@ -83,7 +83,7 @@ ac.st.http_errors(probabilities=None)
 After Hypothesis finds a minimal failing byte stream, use `PromptShrinker` to further reduce the prompt to the exact substring that triggers the failure:
 
 ```python
-from agentcheck import PromptShrinker
+from agenthesis import PromptShrinker
 
 shrinker = PromptShrinker(test_fn=lambda p: "DROP" in p)
 minimal = shrinker.shrink("Please DROP TABLE users; and also do other things")
@@ -107,7 +107,7 @@ def test_something(prompt):
 
 ## Pytest Integration
 
-AgentCheck registers as a pytest plugin automatically. When an `InvariantViolation` is raised, a Rich-formatted failure report is displayed with trace details (steps, LLM calls, tokens, tool call table).
+Agenthesis registers as a pytest plugin automatically. When an `InvariantViolation` is raised, a Rich-formatted failure report is displayed with trace details (steps, LLM calls, tokens, tool call table).
 
 ## Running Tests
 
@@ -124,7 +124,7 @@ pytest tests/ -v --timeout=30
 To get full interception support, agents can implement the `ToolKit` protocol:
 
 ```python
-from agentcheck import ToolKit
+from agenthesis import ToolKit
 
 class MyAgent(ToolKit):
     def get_tools(self) -> dict[str, Callable]:

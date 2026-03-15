@@ -6,7 +6,7 @@ from typing import Any
 
 from langchain_core.tools import BaseTool
 
-from agentcheck.types import InterceptError
+from agenthesis.types import InterceptError
 
 
 class LangChainResolver:

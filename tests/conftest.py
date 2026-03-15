@@ -1,10 +1,10 @@
-"""Shared fixtures for AgentCheck tests."""
+"""Shared fixtures for Agenthesis tests."""
 
 from __future__ import annotations
 
 import pytest
 
-from agentcheck._testing import DummyAgent
+from agenthesis._testing import DummyAgent
 
 
 @pytest.fixture

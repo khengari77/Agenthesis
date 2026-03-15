@@ -1,4 +1,4 @@
-"""DSPy synthesis bridge for AgentCheck invariants."""
+"""DSPy synthesis bridge for Agenthesis invariants."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 
 class InvariantMetric:
-    """Wraps an AgentCheck test function as a DSPy-compatible metric.
+    """Wraps an Agenthesis test function as a DSPy-compatible metric.
 
     Returns 1.0 if the test passes, 0.0 if it raises any exception.
     Works with duck-typed example/prediction objects — no hard dependency on dspy.
