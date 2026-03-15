@@ -1,4 +1,4 @@
-# Agenthesis
+# Agenthesis (Development Ongoing)
 
 Property-based testing framework for AI agents. Agenthesis combines [Hypothesis](https://hypothesis.readthedocs.io/) with tool interception, behavioral invariants, and semantic shrinking to find edge cases in agent behavior.
 
