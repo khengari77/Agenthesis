@@ -11,8 +11,9 @@ from agentcheck.types import AgentResult, AgentTrace
 class LangChainAgentAdapter:
     """Translates LangChain .invoke() into AgentResult."""
 
-    def __init__(self, agent: Any) -> None:
+    def __init__(self, agent: Any, *, input_key: str = "input") -> None:
         self._agent = agent
+        self._input_key = input_key
         self._handler = AgentCheckCallbackHandler()
 
     @property
@@ -25,7 +26,7 @@ class LangChainAgentAdapter:
         self._handler.reset()
 
         response = self._agent.invoke(
-            {"input": prompt},
+            {self._input_key: prompt},
             config={"callbacks": [self._handler]},
         )
 
@@ -43,7 +44,10 @@ class LangChainAgentAdapter:
     @staticmethod
     def _extract_output(response: Any) -> str:
         if isinstance(response, dict):
-            return str(response.get("output", response))
+            if "output" in response:
+                return str(response["output"])
+            msg = f"Expected 'output' key in response dict, got keys: {list(response.keys())}"
+            raise KeyError(msg)
         if hasattr(response, "content"):
             return str(response.content)
         return str(response)

@@ -72,3 +72,23 @@ class TestLangChainAgentAdapter:
         msg = MagicMock()
         msg.content = "from message"
         assert LangChainAgentAdapter._extract_output(msg) == "from message"
+
+    def test_extract_output_missing_key_raises(self) -> None:
+        from agentcheck.integrations.langchain.adapter import LangChainAgentAdapter
+
+        with pytest.raises(KeyError, match="Expected 'output' key"):
+            LangChainAgentAdapter._extract_output({"result": "oops"})
+
+    def test_custom_input_key(self) -> None:
+        from agentcheck.integrations.langchain.adapter import LangChainAgentAdapter
+
+        mock_agent = MagicMock()
+        mock_agent.invoke.return_value = {"output": "done"}
+        mock_agent.tools = []
+
+        adapter = LangChainAgentAdapter(mock_agent, input_key="question")
+        adapter.run("what is 2+2?")
+
+        call_args = mock_agent.invoke.call_args
+        assert "question" in call_args[0][0]
+        assert call_args[0][0]["question"] == "what is 2+2?"

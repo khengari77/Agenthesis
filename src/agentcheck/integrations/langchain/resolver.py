@@ -43,7 +43,10 @@ class LangChainResolver:
 
         tool = self._tool_map.get(name)
         if tool is None:
-            msg = f"Cannot install wrapper for unknown tool: {name}"
+            msg = (
+                f"Cannot install wrapper for unknown tool: {name}. "
+                "Ensure resolve() is called before install()."
+            )
             raise InterceptError(msg)
 
         try:

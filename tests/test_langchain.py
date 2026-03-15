@@ -61,18 +61,18 @@ class TestAgentCheckCallbackHandler:
         )
 
         with pytest.raises(InvariantViolation, match="max_llm_calls"), Intercept(agent) as ctx:
-                ctx.set_llm_call_limit(1)
-                handler.on_llm_end(response)  # call 1: ok
-                handler.on_llm_end(response)  # call 2: exceeds limit
+            ctx.set_llm_call_limit(1)
+            handler.on_llm_end(response)  # call 1: ok
+            handler.on_llm_end(response)  # call 2: exceeds limit
 
     def test_invariant_violation_propagates_on_tool_start(self, handler, agent) -> None:
         from agentcheck.intercept import Intercept
         from agentcheck.types import InvariantViolation
 
         with pytest.raises(InvariantViolation, match="max_steps"), Intercept(agent) as ctx:
-                ctx.set_step_limit(1)
-                handler.on_tool_start(serialized={}, input_str="a")  # step 1: ok
-                handler.on_tool_start(serialized={}, input_str="b")  # step 2: exceeds
+            ctx.set_step_limit(1)
+            handler.on_tool_start(serialized={}, input_str="a")  # step 1: ok
+            handler.on_tool_start(serialized={}, input_str="b")  # step 2: exceeds
 
     def test_handler_reset_clears_state(self, handler, agent) -> None:
         from agentcheck.intercept import Intercept
@@ -105,6 +105,19 @@ class TestAgentCheckCallbackHandler:
         assert len(ctx.calls) == 1
         assert ctx.calls[0].name == "search"
         assert ctx.calls[0].result == "result data"
+
+    def test_on_tool_error_cleans_pending(self, handler, agent) -> None:
+        from agentcheck.intercept import Intercept
+
+        run_id = uuid4()
+
+        with Intercept(agent):
+            handler.on_tool_start(
+                serialized={"name": "failing_tool"}, input_str="bad input", run_id=run_id,
+            )
+            assert run_id in handler._pending_tools
+            handler.on_tool_error(RuntimeError("boom"), run_id=run_id)
+            assert run_id not in handler._pending_tools
 
     def test_on_tool_end_without_matching_start(self, handler, agent) -> None:
         from agentcheck.intercept import Intercept

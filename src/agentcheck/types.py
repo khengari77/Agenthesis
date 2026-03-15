@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @dataclass(frozen=True)
@@ -55,18 +58,28 @@ class ToolKit(Protocol):
 class ToolResolver(Protocol):
     """Protocol for pluggable tool resolution strategies."""
 
-    def resolve(self, agent: Any, explicit_tools: dict[str, Any] | None) -> dict[str, Any]:
+    def resolve(
+        self, agent: Any, explicit_tools: dict[str, Callable[..., Any]] | None,
+    ) -> dict[str, Callable[..., Any]]:
         """Discover tools from the agent or explicit dict."""
         ...
 
     def install(
-        self, agent: Any, explicit_tools: dict[str, Any] | None, name: str, wrapper: Any
+        self,
+        agent: Any,
+        explicit_tools: dict[str, Callable[..., Any]] | None,
+        name: str,
+        wrapper: Callable[..., Any],
     ) -> None:
         """Install a wrapped tool on the agent or dict."""
         ...
 
     def restore(
-        self, agent: Any, explicit_tools: dict[str, Any] | None, name: str, original: Any
+        self,
+        agent: Any,
+        explicit_tools: dict[str, Callable[..., Any]] | None,
+        name: str,
+        original: Callable[..., Any],
     ) -> None:
         """Restore the original tool on the agent or dict."""
         ...

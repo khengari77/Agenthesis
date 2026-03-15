@@ -38,17 +38,16 @@ class AgentCheckCallbackHandler(BaseCallbackHandler):
             if isinstance(token_usage, dict):
                 total_tokens = token_usage.get("total_tokens", 0)
 
+        # InvariantViolation propagates — NOT inside try/except
+        # Increment local counters AFTER ctx call so they stay in sync on violation.
+        ctx.record_llm_call(tokens=total_tokens)
         self._llm_calls += 1
         self._total_tokens += total_tokens
-        # InvariantViolation propagates — NOT inside try/except
-        ctx.record_llm_call(tokens=total_tokens)
 
     def on_tool_start(
         self,
         serialized: dict[str, Any],
         input_str: str,
-        *,
-        run_id: UUID | None = None,
         **kwargs: Any,
     ) -> None:
         try:
@@ -56,6 +55,7 @@ class AgentCheckCallbackHandler(BaseCallbackHandler):
         except AgentCheckError:
             return  # No active context
 
+        run_id = kwargs.get("run_id")
         if run_id is not None:
             self._pending_tools[run_id] = {
                 "name": serialized.get("name", "unknown"),
@@ -63,16 +63,18 @@ class AgentCheckCallbackHandler(BaseCallbackHandler):
                 "start_time": time.monotonic(),
             }
 
-        self._tool_calls += 1
         # InvariantViolation propagates — NOT inside try/except
+        # Increment local counter AFTER ctx call so they stay in sync on violation.
         ctx.record_step()
+        self._tool_calls += 1
 
-    def on_tool_end(self, output: str, *, run_id: UUID | None = None, **kwargs: Any) -> None:
+    def on_tool_end(self, output: str, **kwargs: Any) -> None:
         try:
             ctx = get_current_intercept()
         except AgentCheckError:
             return
 
+        run_id = kwargs.get("run_id")
         if run_id is not None and run_id in self._pending_tools:
             info = self._pending_tools.pop(run_id)
             tool_name = info["name"]
@@ -88,15 +90,14 @@ class AgentCheckCallbackHandler(BaseCallbackHandler):
             timestamp=time.monotonic(),
             was_intercepted=False,
         )
-        ctx._calls.append(call)
+        ctx.record_tool_call(call)
 
     def on_tool_error(
         self,
         error: BaseException,
-        *,
-        run_id: UUID | None = None,
         **kwargs: Any,
     ) -> None:
+        run_id = kwargs.get("run_id")
         if run_id is not None:
             self._pending_tools.pop(run_id, None)
 

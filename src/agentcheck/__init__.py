@@ -4,7 +4,7 @@ __version__ = "0.1.0"
 
 from agentcheck import strategies as st
 from agentcheck._given import given
-from agentcheck.intercept import Intercept
+from agentcheck.intercept import DefaultResolver, Intercept
 from agentcheck.properties import (
     lark_grammar,
     max_llm_calls,
@@ -31,6 +31,7 @@ from agentcheck.types import (
 __all__ = [
     "AgentCheckError",
     "AgentProtocol",
+    "DefaultResolver",
     "AgentResult",
     "AgentTrace",
     "Intercept",

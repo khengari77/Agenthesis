@@ -252,6 +252,10 @@ class Intercept:
             return self._trace
         return self._build_trace()
 
+    def record_tool_call(self, call: ToolCall) -> None:
+        """Record an externally-observed tool call."""
+        self._calls.append(call)
+
     @property
     def calls(self) -> list[ToolCall]:
         """Get recorded tool calls (available during execution)."""

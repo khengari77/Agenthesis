@@ -105,5 +105,28 @@ class TestCustomResolver:
             result = tools["echo"]("hello")
 
         assert result == "mocked"
+        # Verify install() saved the original
+        assert "echo" in resolver._installed
         # After exit, original is restored
         assert tools["echo"]("hello") == "hello"
+
+    def test_intercept_with_agent_tools_and_resolver(self) -> None:
+        """Pass both agent and explicit tools with a custom resolver."""
+
+        class _FakeAgent:
+            def run(self, prompt: str) -> Any:
+                return None
+
+        agent = _FakeAgent()
+        explicit = {"greet": lambda name: f"hi {name}"}
+        resolver = _CustomResolver(explicit)
+
+        with Intercept(agent, explicit, resolver=resolver) as ctx:
+            ctx.on("greet").respond("mocked greeting")
+            result = explicit["greet"]("world")
+
+        assert result == "mocked greeting"
+        assert len(ctx.calls) == 1
+        assert ctx.calls[0].name == "greet"
+        # Original restored
+        assert explicit["greet"]("world") == "hi world"
